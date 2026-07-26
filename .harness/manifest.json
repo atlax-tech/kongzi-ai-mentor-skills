@@ -1,0 +1,105 @@
+{
+  "$schema": "https://harness-armor.dev/schemas/manifest.schema.json",
+  "schema_version": "1.0.0",
+  "spec_version": "1.0.0",
+  "generator": {
+    "name": "harness-armor",
+    "version": "0.1.2"
+  },
+  "repository_state": "MANAGED_HARNESS",
+  "managed_files": [
+    {
+      "path": "AGENTS.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "7b02111f4db3f467663fba7c06c9df12f0b8e8eaf5a2ca142e90c7bfff411be5"
+    },
+    {
+      "path": "docs/PRODUCT.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "d590be310d80383cf55483a65f099727312d6ab65b98b3fbd0d0c08cd2b1f725"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "83a54edffc3343493d1aac0f0a27593283455b19a255cb9d4a3a1ccd32baa478"
+    },
+    {
+      "path": "docs/DESIGN.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "06487757c4367ce43d5e2bc295e633d0bbaf82c59c34f786d2b852ff9c26699f"
+    },
+    {
+      "path": "docs/DEVELOPMENT.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "0563fac120443627129cb1fbf2041f32bde1f7174da2df2a88ea8cb41f653326"
+    },
+    {
+      "path": "docs/TESTING.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "2d4618c559408fd2967da2486470582378864c19fb32fa18b720ecdcd294c58e"
+    },
+    {
+      "path": "docs/ACCEPTANCE.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "b69c48e739ca50eafe5ff77895411bc4a4d653a5af24d913c7f96a4dcf73b80b"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "332c6782a677e7b1d124bf6326ad41af610b36a2c6e90d9f02c4918f2ecec1cd"
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "b8c44aa4bcf809187e4d122467815181b2c8f00cce500e9c24d35967fc8c0592"
+    },
+    {
+      "path": "docs/development-log/README.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "1e609ea39627d32f539f09da470c7e590890529a2d2ffc8f3718b5ece0c74581"
+    },
+    {
+      "path": "docs/development-log/2026-07-26-product-definition.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "537ac03969db6708025032d95cfc3f71ebd70d3d4c7f2221b0d0cd823b74e017"
+    },
+    {
+      "path": "docs/product/PRD_v0.1.md",
+      "owner": "user",
+      "mode": "user",
+      "sha256": "c62ba0abd329fddbf601bd3ac6c6f4143c0858aca6cd41ac38612d8bf0db6d5e"
+    },
+    {
+      "path": "docs/research/LEARNING_SCIENCE.md",
+      "owner": "user",
+      "mode": "user",
+      "sha256": "b317b96f9c63eb577d3ae88abe0b024728822a4e5e34b403d1f3ee4efdbe2dec"
+    },
+    {
+      "path": ".harness/source-index.json",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "3bab5513138a298aa915ca0b4e684756590f66543cf76aa10048b4fc6de88f1a"
+    },
+    {
+      "path": ".harness/unresolved.json",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "7f980cda7d185f0ed36aee3749a2bf45d3f2a28fad288308d79ed53df744aebf"
+    }
+  ],
+  "source_index": ".harness/source-index.json",
+  "unresolved_index": ".harness/unresolved.json",
+  "last_updated": "2026-07-26T15:12:59Z"
+}
