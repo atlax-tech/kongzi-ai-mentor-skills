@@ -64,10 +64,10 @@ receive unique filenames.
 
 ## README policy
 
-The existing README heading order and hierarchy were preserved. Upstream
-installation commands and feature-by-feature descriptions were removed. Other
-open-source projects now appear only as thanked and declared references, with
-links to their own documentation.
+The owner made the final README editorial decision: all cited open-source
+projects are listed together under `构建参考`, without a separate integration
+catalog or a dedicated Darwin section. Upstream installation commands and
+feature-by-feature descriptions remain absent.
 
 ## Evidence
 

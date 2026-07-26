@@ -211,24 +211,17 @@ python3 scripts/kongzi.py --help
 
 ---
 
-## 已集成能力
-
-### 完整运行时集成
-
-Kongzi 对用户只呈现一套统一学习流程。本 README 不展开其他开源项目的安装方式或功能说明；以下项目只作致谢与来源声明，详情请阅读各自仓库：
-
-- [kangarooking/cangjie-skill](https://github.com/kangarooking/cangjie-skill)
-- [alchaincyf/nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
-- [alchaincyf/darwin-skill](https://github.com/alchaincyf/darwin-skill)
-- [kangarooking/kangarooking-skills · video-downloader](https://github.com/kangarooking/kangarooking-skills/tree/main/video-downloader)
-
-### 构建参考
+## 构建参考
 
 感谢以下公开项目提供的设计启发。此处同样只声明引用，不复述其实现或用法：
 
 - [atlax-tech/harness-armor](https://github.com/atlax-tech/harness-armor)
 - [iamzifei/show-me-the-money](https://github.com/iamzifei/show-me-the-money)
 - [XBuilderLAB/cheat-on-content](https://github.com/XBuilderLAB/cheat-on-content)
+- [kangarooking/cangjie-skill](https://github.com/kangarooking/cangjie-skill)
+- [alchaincyf/nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
+- [alchaincyf/darwin-skill](https://github.com/alchaincyf/darwin-skill)
+- [kangarooking/kangarooking-skills · video-downloader](https://github.com/kangarooking/kangarooking-skills/tree/main/video-downloader)
 
 ---
 
@@ -248,12 +241,6 @@ Kongzi 是 MIT 开源项目。欢迎提交：
 python3 -m unittest discover -s tests -v
 python3 scripts/kongzi.py doctor --vault <测试 vault>
 ```
-
----
-
-## Darwin.skill：让 Kongzi 持续进化
-
-Kongzi 感谢 [alchaincyf/darwin-skill](https://github.com/alchaincyf/darwin-skill) 对本项目的启发与支持。为保持 README 聚焦，这里只作致谢与来源声明；安装、能力和使用方式请以原项目文档为准。
 
 ---
 
