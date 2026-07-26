@@ -62,6 +62,38 @@ class KongziCLITest(unittest.TestCase):
         )
         return self.data(result)
 
+    def test_first_status_and_dashboard_offer_one_localized_next_action(self) -> None:
+        before = self.data(self.run_cli("status", "--vault", str(self.vault)))
+        self.assertFalse(before["initialized"])
+        self.assertIn("init --vault", before["next_action"])
+        self.run_cli(
+            "init",
+            "--vault",
+            str(self.vault),
+            "--name",
+            "新手",
+            "--timezone",
+            "Asia/Shanghai",
+        )
+        dashboard = (self.vault / "Kongzi" / "Dashboard.md").read_text(encoding="utf-8")
+        self.assertIn("+08:00（Asia/Shanghai）", dashboard)
+        self.assertIn("完成第一项画像问题", dashboard)
+        self.assertNotIn("2. 创建学习旅程", dashboard)
+        status = self.data(self.run_cli("status", "--vault", str(self.vault)))
+        self.assertEqual(status["missing_profile_fields"][0], "goal")
+        self.assertIn("下一项：goal", status["next_action"])
+
+    def test_unconfirmed_schedule_defaults_are_labeled_inferred(self) -> None:
+        initialized = self.initialize()
+        journey = initialized["journey"]["journey"]
+        self.assertFalse(journey["availability"]["confirmed"])
+        self.assertEqual(journey["availability"]["daily_minutes_source"], "inferred-default")
+        journey_note = next((self.vault / "Kongzi" / "Journeys").rglob("Journey.md"))
+        journey_text = journey_note.read_text(encoding="utf-8")
+        self.assertIn("暂定默认，待画像确认", journey_text)
+        self.assertIn("限制：未提供，待确认", journey_text)
+        self.assertNotIn("限制：无", journey_text)
+
     def add_profile(self) -> None:
         for index, field in enumerate(
             ("goal", "baseline", "constraints", "materials", "experience", "diagnostic")
@@ -248,11 +280,17 @@ class KongziCLITest(unittest.TestCase):
         state = json.loads((self.vault / ".kongzi" / "state.json").read_text(encoding="utf-8"))
         self.assertEqual(state["nodes"][node]["status"], "mastered")
         self.assertEqual(state["nodes"][node]["mastery"]["level"], 4)
+        self.assertEqual(
+            state["journeys"][next(iter(state["journeys"]))]["status"], "learning"
+        )
+        map_note = next((self.vault / "Kongzi" / "Journeys").rglob("Knowledge Map.md"))
+        self.assertIn("mastered · L4", map_note.read_text(encoding="utf-8"))
 
         self.run_cli("report", "daily", "--vault", str(self.vault))
         self.run_cli("report", "daily", "--vault", str(self.vault))
         reports = list((self.vault / "Kongzi" / "Reports" / "Daily").glob("*.md"))
         self.assertEqual(len(reports), 2)
+        self.assertTrue(all(path.read_text(encoding="utf-8").startswith("# Kongzi") for path in reports))
         doctor = self.data(self.run_cli("doctor", "--vault", str(self.vault)))
         self.assertTrue(doctor["healthy"])
 
@@ -280,6 +318,137 @@ class KongziCLITest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("用户输出", result.stderr)
 
+    def test_learner_question_requires_grounded_explanation_and_restatement(self) -> None:
+        self.initialize()
+        node, claim = self.prepare_node()
+        session = self.data(
+            self.run_cli("session", "start", "--vault", str(self.vault), "--node-id", node)
+        )["session"]["id"]
+        question = self.data(
+            self.run_cli(
+                "session",
+                "question",
+                "--vault",
+                str(self.vault),
+                "--session-id",
+                session,
+                "--question",
+                "为什么先回忆再重读，而不是直接重读？",
+            )
+        )["question"]["id"]
+        unsupported = self.run_cli(
+            "session",
+            "explain",
+            "--vault",
+            str(self.vault),
+            "--question-id",
+            question,
+            "--response",
+            "先回忆能暴露提取失败。",
+            "--check-question",
+            "请用自己的话解释先回忆的作用。",
+            check=False,
+        )
+        self.assertEqual(unsupported.returncode, 2)
+        self.assertIn("claim", unsupported.stderr)
+        explanation = self.data(
+            self.run_cli(
+                "session",
+                "explain",
+                "--vault",
+                str(self.vault),
+                "--question-id",
+                question,
+                "--response",
+                "先闭卷回忆会暴露提取缺口，随后核对才能把反馈用在真正的错误上。",
+                "--claim",
+                claim,
+                "--check-question",
+                "请用自己的话解释先回忆的作用。",
+            )
+        )["explanation"]
+        premature = self.run_cli(
+            "session",
+            "finish",
+            "--vault",
+            str(self.vault),
+            "--session-id",
+            session,
+            "--minutes",
+            "10",
+            "--reflection",
+            "仍需复述。",
+            "--confidence",
+            "0.5",
+            check=False,
+        )
+        self.assertEqual(premature.returncode, 2)
+        self.assertIn("用户输出", premature.stderr)
+        answer = self.data(
+            self.run_cli(
+                "session",
+                "answer",
+                "--vault",
+                str(self.vault),
+                "--session-id",
+                session,
+                "--explanation-id",
+                explanation["id"],
+                "--kind",
+                "explain",
+                "--question",
+                explanation["check_question"],
+                "--answer",
+                "先尝试提取，才知道自己具体忘在哪里，核对时也更有针对性。",
+            )
+        )["answer"]["id"]
+        self.run_cli(
+            "session",
+            "grade",
+            "--vault",
+            str(self.vault),
+            "--answer-id",
+            answer,
+            "--score",
+            "0.88",
+            "--feedback",
+            "准确说明了提取与反馈的关系。",
+            "--correction",
+            "下一次再补一个延迟条件。",
+            "--claim",
+            claim,
+            "--retrieval",
+            "0.9",
+            "--accuracy",
+            "0.9",
+            "--transfer",
+            "0.7",
+        )
+        self.run_cli(
+            "session",
+            "finish",
+            "--vault",
+            str(self.vault),
+            "--session-id",
+            session,
+            "--minutes",
+            "18",
+            "--reflection",
+            "先提取暴露缺口，再用材料纠错。",
+            "--confidence",
+            "0.75",
+        )
+        report = self.data(
+            self.run_cli("report", "daily", "--vault", str(self.vault))
+        )["report"]
+        self.assertEqual(report["learner_questions_answered"], 1)
+        state = json.loads((self.vault / ".kongzi" / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            state["learner_questions"][question]["explanation_id"], explanation["id"]
+        )
+        self.assertEqual(state["explanations"][explanation["id"]]["check_answer_id"], answer)
+        self.assertTrue(self.data(self.run_cli("doctor", "--vault", str(self.vault)))["healthy"])
+
     def test_node_requires_grounded_claim(self) -> None:
         self.initialize()
         result = self.run_cli(
@@ -295,6 +464,174 @@ class KongziCLITest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 2)
         self.assertIn("claim", result.stderr)
+
+    def test_plan_records_personalization_methods_and_replan_history(self) -> None:
+        self.initialize()
+        self.add_profile()
+        self.prepare_node()
+        first = self.data(
+            self.run_cli(
+                "plan",
+                "build",
+                "--vault",
+                str(self.vault),
+                "--weeks",
+                "1",
+                "--sessions-per-week",
+                "3",
+                "--minutes",
+                "30",
+                "--reason",
+                "初始诊断显示需要先练提取",
+            )
+        )["plan"]
+        self.assertEqual(
+            [item["mode"] for item in first["sessions"]],
+            ["learn", "practice", "integrate"],
+        )
+        self.assertTrue(all(item["method"] for item in first["sessions"]))
+        self.assertEqual(first["sessions"][0]["minimum_viable_minutes"], 10)
+        self.assertEqual(first["basis"]["profile_fields"]["constraints"], "value-2")
+        second = self.data(
+            self.run_cli(
+                "plan",
+                "build",
+                "--vault",
+                str(self.vault),
+                "--weeks",
+                "1",
+                "--sessions-per-week",
+                "2",
+                "--minutes",
+                "20",
+                "--reason",
+                "观察到连续两次会话超时，缩短单次时长",
+            )
+        )["plan"]
+        state = json.loads((self.vault / ".kongzi" / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(second["supersedes_plan_id"], first["id"])
+        self.assertEqual(state["plans"][first["id"]]["status"], "superseded")
+        self.assertEqual(state["plans"][first["id"]]["superseded_by"], second["id"])
+        plan_files = list((self.vault / "Kongzi" / "Journeys").rglob("Learning Plan--*.md"))
+        self.assertEqual(len(plan_files), 2)
+
+    def test_reminder_definitions_support_vault_paths_with_spaces(self) -> None:
+        self.vault = Path(self.temp.name) / "My Obsidian Vault"
+        self.initialize()
+        cron = self.data(
+            self.run_cli(
+                "reminder",
+                "generate",
+                "--vault",
+                str(self.vault),
+                "--method",
+                "cron",
+                "--time",
+                "20:15",
+            )
+        )
+        cron_text = Path(cron["definition_path"]).read_text(encoding="utf-8")
+        self.assertIn(f"--vault '{self.vault.resolve()}'", cron_text)
+        launchd = self.data(
+            self.run_cli(
+                "reminder",
+                "generate",
+                "--vault",
+                str(self.vault),
+                "--method",
+                "launchd",
+                "--time",
+                "20:15",
+            )
+        )
+        plist = Path(launchd["definition_path"])
+        self.assertIn(str(self.vault.resolve()), plist.read_text(encoding="utf-8"))
+        self.assertRegex(plist.name, r"dev\.kongzi\.review-reminder\.[0-9a-f]{8}\.plist")
+
+    def test_overdue_report_and_finished_plan_routing_are_truthful(self) -> None:
+        self.initialize()
+        self.add_profile()
+        node, claim = self.prepare_node()
+        session = self.data(
+            self.run_cli("session", "start", "--vault", str(self.vault), "--node-id", node)
+        )["session"]["id"]
+        answer = self.data(
+            self.run_cli(
+                "session",
+                "answer",
+                "--vault",
+                str(self.vault),
+                "--session-id",
+                session,
+                "--kind",
+                "application",
+                "--question",
+                "Apply the supported method.",
+                "--answer",
+                "Attempt, check, and correct after retrieval.",
+            )
+        )["answer"]["id"]
+        graded = self.data(
+            self.run_cli(
+                "session",
+                "grade",
+                "--vault",
+                str(self.vault),
+                "--answer-id",
+                answer,
+                "--score",
+                "0.9",
+                "--feedback",
+                "Grounded.",
+                "--correction",
+                "Retest after a delay.",
+                "--claim",
+                claim,
+                "--retrieval",
+                "0.9",
+                "--accuracy",
+                "0.9",
+                "--transfer",
+                "0.9",
+            )
+        )
+        self.run_cli(
+            "session",
+            "finish",
+            "--vault",
+            str(self.vault),
+            "--session-id",
+            session,
+            "--minutes",
+            "12",
+            "--reflection",
+            "Retrieval before review.",
+            "--confidence",
+            "0.8",
+        )
+        status = self.data(self.run_cli("status", "--vault", str(self.vault)))
+        self.assertEqual(status["planned_sessions_remaining"], 0)
+        self.assertIn("下一次延迟复习", status["next_action"])
+        self.assertNotIn("下一次学习会话", status["next_action"])
+
+        queue_path = self.vault / ".kongzi" / "review-queue.json"
+        queue = json.loads(queue_path.read_text(encoding="utf-8"))
+        card_id = graded["review_card"]["id"]
+        queue["cards"][card_id]["due_at"] = (
+            dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=5)
+        ).replace(microsecond=0).isoformat()
+        queue_path.write_text(json.dumps(queue), encoding="utf-8")
+        report_result = self.data(
+            self.run_cli("report", "weekly", "--vault", str(self.vault))
+        )
+        report = report_result["report"]
+        self.assertEqual(report["due_reviews"], 1)
+        self.assertGreaterEqual(report["max_overdue_hours"], 4.9)
+        markdown = Path(report_result["path"]).read_text(encoding="utf-8")
+        self.assertTrue(markdown.startswith("# Kongzi Weekly Report"))
+        self.assertIn("- 最早到期：", markdown)
+        self.assertIn("- 最大逾期：", markdown)
+        self.assertNotIn("\n            ##", markdown)
 
     def test_integration_discovery_uses_configured_roots(self) -> None:
         self.initialize()
@@ -475,6 +812,42 @@ class KongziCLITest(unittest.TestCase):
         self.assertFalse((output / "AGENTS.md").exists())
         self.assertFalse((output / ".harness").exists())
         self.assertFalse((output / "docs").exists())
+
+    def test_readme_structure_and_upstream_acknowledgement_boundary(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        headings = [
+            line
+            for line in readme.splitlines()
+            if line.startswith("#") and not line.startswith("# Kongzi Daily")
+        ]
+        self.assertEqual(
+            headings,
+            [
+                "# Kongzi.skill",
+                "## 效果示例",
+                "## 安装",
+                "### 方式一：一行命令（推荐，跨 runtime）",
+                "### 方式二：手动安装",
+                "### 方式三：作为参考资料使用",
+                "### 使用",
+                "## Kongzi 覆盖什么",
+                "### 诚实边界",
+                "## 已集成能力",
+                "### 完整运行时集成",
+                "### 构建参考",
+                "## 贡献与社区",
+                "## Darwin.skill：让 Kongzi 持续进化",
+                "## 学习方法如何选择",
+                "## 仓库结构",
+                "## 背后的故事",
+                "## 许可证",
+                "## English",
+            ],
+        )
+        self.assertNotIn("scripts/install_integrations.py", readme)
+        self.assertNotIn("/Kongzi integration", readme)
+        self.assertNotIn("在 Kongzi 中的用途", readme)
+        self.assertIn("只作致谢与来源声明", readme)
 
 
 if __name__ == "__main__":

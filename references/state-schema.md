@@ -6,7 +6,7 @@ Kongzi stores machine state under `<vault>/.kongzi/` and human-readable notes un
 
 - `config.json` — vault, locale, active journey, knowledge base, reminder configuration.
 - `profile.json` — self-reported fields, interview facts, observed calibration evidence.
-- `state.json` — journeys, sources, claims, nodes, plans, sessions, answers, grades, notes, mentor.
+- `state.json` — journeys, sources, claims, nodes, versioned plans, sessions, learner questions, source-backed explanations, answers, grades, notes, mentor.
 - `events.jsonl` — append-only evidence ledger.
 - `review-queue.json` — cards, due times, interval history.
 - `integrations.json` — prepared and completed upstream runs.
@@ -40,3 +40,13 @@ Do not hand-edit machine state unless repairing with a backup and an explicit mi
 - 4 — at least two delayed passes plus application evidence
 
 Immediate confidence never upgrades mastery. A low delayed score resets the schedule while preserving history.
+
+## Teacher dialogue records
+
+- `learner_questions` preserves the learner's exact question and links it to the active session and node.
+- `explanations` preserves the response, supporting claim IDs, a required understanding-check question, and the learner's check-answer ID.
+- A session cannot finish while a learner question is unanswered or an explanation has no learner restatement/application.
+
+## Plan history
+
+Each plan stores its profile/source basis, knowledge-type-specific method, success criterion, minimum viable session, and optional `supersedes_plan_id`. Replanning marks the prior plan `superseded` instead of deleting it. Human-readable plan versions use unique filenames; `Learning Plan.md` points to the active version.
