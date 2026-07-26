@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kongzi AI Mentor"
+  short_description: "Source-backed personalized AI learning coach"
+  default_prompt: "Use $kongzi to start or resume my personalized learning journey."
