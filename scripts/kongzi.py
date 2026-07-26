@@ -17,6 +17,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -40,12 +41,40 @@ REVIEW_INTERVALS = (1, 3, 7, 14, 30, 60, 120)
 KNOWLEDGE_TYPES = {"concept", "procedure", "fact", "mental-model", "metacognitive"}
 AUTHORITY_LEVELS = {"primary", "official", "standard", "textbook", "secondary", "user"}
 QUESTION_KINDS = {"recall", "explain", "compare", "application", "debug", "create"}
+REQUIRED_PROFILE_FIELDS = ("goal", "baseline", "constraints", "materials", "experience", "diagnostic")
 DEFAULT_MASTERY_CRITERIA = {
     "fact": {"threshold": 0.85, "delayed_passes": 2, "requires_application": True},
     "concept": {"threshold": 0.80, "delayed_passes": 2, "requires_application": True},
     "procedure": {"threshold": 0.85, "delayed_passes": 2, "requires_application": True},
     "mental-model": {"threshold": 0.80, "delayed_passes": 2, "requires_application": True},
     "metacognitive": {"threshold": 0.80, "delayed_passes": 2, "requires_application": True},
+}
+METHOD_BY_TYPE = {
+    "fact": {
+        "learn": "精简解释 → 自由回忆 → 立即反馈",
+        "practice": "间隔提取 → 相似项辨析 → 纠错",
+        "integrate": "混合提取 → 新情境应用 → 校准",
+    },
+    "concept": {
+        "learn": "例子/反例 → 自我解释 → 闭卷提取",
+        "practice": "对比辨析 → 变式提问 → 反馈",
+        "integrate": "新情境迁移 → 边界判断 → 反思",
+    },
+    "procedure": {
+        "learn": "完整示例 → 补全步骤 → 独立尝试",
+        "practice": "独立练习 → 定点纠错 → 变式重做",
+        "integrate": "真实任务 → 调试 → 解释决策",
+    },
+    "mental-model": {
+        "learn": "对比案例 → 预测结果 → 解释因果",
+        "practice": "混合情境 → 选择模型 → 说明边界",
+        "integrate": "真实决策 → 反事实检验 → 复盘",
+    },
+    "metacognitive": {
+        "learn": "先预测表现 → 执行 → 比较偏差",
+        "practice": "信心评分 → 闭卷输出 → 校准",
+        "integrate": "选择策略 → 检查结果 → 调整计划",
+    },
 }
 UTC = dt.timezone.utc
 
@@ -135,6 +164,11 @@ def parse_scalar(value: str) -> Any:
         return value
 
 
+def missing_profile_fields(profile: dict[str, Any]) -> list[str]:
+    reported = profile.get("self_reported", {})
+    return [field for field in REQUIRED_PROFILE_FIELDS if not reported.get(field)]
+
+
 def md_escape(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
 
@@ -219,14 +253,61 @@ class Vault:
     def save_state(self, state: dict[str, Any]) -> None:
         state["updated_at"] = iso()
         json_write(self.state_path, state)
+        journey_id = active_journey_id(self) if self.config_path.exists() else None
+        if journey_id and any(
+            node.get("journey_id") == journey_id
+            for node in state.get("nodes", {}).values()
+        ):
+            try:
+                write_knowledge_map_view(self, state, journey_id)
+            except (KeyError, KongziError):
+                # The state remains authoritative; doctor reports a broken graph.
+                pass
+        self.refresh_dashboard()
 
     def save_profile(self, profile: dict[str, Any]) -> None:
         profile["updated_at"] = iso()
         json_write(self.profile_path, profile)
+        self.refresh_dashboard()
 
     def save_queue(self, queue: dict[str, Any]) -> None:
         queue["updated_at"] = iso()
         json_write(self.queue_path, queue)
+        self.refresh_dashboard()
+
+    def refresh_dashboard(self, payload: dict[str, Any] | None = None) -> None:
+        if not self.config_path.exists() or not self.state_path.exists():
+            return
+        payload = payload or status_payload(self)
+        profile = json_load(self.profile_path, {})
+        config = json_load(self.config_path, {})
+        journey = payload.get("active_journey")
+        updated = local_now(self).replace(microsecond=0).isoformat()
+        dashboard = textwrap.dedent(
+            f"""\
+            # Kongzi 学习控制台
+
+            > 学习者：{profile.get("learner_name") or "未填写"}
+            > 当前旅程：{journey.get("goal") if journey else "尚未创建"}
+            > 更新时间：{updated}（{config.get("timezone", "UTC")}）
+
+            ## 当前状态
+
+            - 到期复习：{payload.get("due_reviews", 0)}
+            - 进行中会话：{len(payload.get("active_sessions", []))}
+            - 来源：{payload.get("sources", 0)}
+            - 主张：{payload.get("claims", 0)}
+            - 知识节点：{sum(payload.get("nodes", {}).values())}
+
+            ## 唯一下一步
+
+            {payload.get("next_action")}
+
+            重新进入 Agent 时输入 `/Kongzi`，系统会从本地证据继续。
+            """
+        )
+        self.notes.mkdir(parents=True, exist_ok=True)
+        (self.notes / "Dashboard.md").write_text(dashboard, encoding="utf-8")
 
     def event(
         self,
@@ -276,7 +357,9 @@ def require_journey(vault: Vault) -> tuple[str, dict[str, Any], dict[str, Any]]:
 
 def initialize(args: argparse.Namespace) -> None:
     vault = Vault(Path(args.vault))
-    if args.daily_minutes <= 0 or not 1 <= args.days_per_week <= 7:
+    daily_minutes = args.daily_minutes if args.daily_minutes is not None else 30
+    days_per_week = args.days_per_week if args.days_per_week is not None else 5
+    if daily_minutes <= 0 or not 1 <= days_per_week <= 7:
         raise KongziError("daily-minutes 必须大于 0，days-per-week 必须在 1 到 7 之间")
     vault.root.mkdir(parents=True, exist_ok=True)
     if vault.config_path.exists() and not args.force:
@@ -332,6 +415,8 @@ def initialize(args: argparse.Namespace) -> None:
         "sessions": {},
         "answers": {},
         "grades": {},
+        "learner_questions": {},
+        "explanations": {},
         "notes": {},
         "mentor": {"enabled": False, "name": None, "persona_path": None},
     }
@@ -341,18 +426,19 @@ def initialize(args: argparse.Namespace) -> None:
     json_write(vault.queue_path, {"schema_version": SCHEMA_VERSION, "cards": {}, "updated_at": iso()})
     json_write(vault.integrations_path, {"schema_version": SCHEMA_VERSION, "runs": {}})
     vault.events_path.write_text("", encoding="utf-8")
+    initialized_local = local_now(vault).replace(microsecond=0).isoformat()
     dashboard = textwrap.dedent(
         f"""\
         # Kongzi 学习控制台
 
         > 学习者：{args.name or "未填写"}  
-        > 初始化：{iso()}
+        > 初始化：{initialized_local}（{args.timezone}）
 
         ## 下一步
 
-        1. 完成画像访谈：`/Kongzi profile`
-        2. 创建学习旅程：`/Kongzi journey`
-        3. 录入来源材料：`/Kongzi source`
+        完成第一项画像问题：`/Kongzi profile`
+
+        画像完成后，`/Kongzi` 会根据本地状态只给出一个新的下一步。
 
         ## 学习原则
 
@@ -376,8 +462,14 @@ def initialize(args: argparse.Namespace) -> None:
             outcome=args.outcome or args.goal,
             prior_knowledge=args.prior_knowledge or "",
             deadline=args.deadline,
-            daily_minutes=args.daily_minutes,
-            days_per_week=args.days_per_week,
+            daily_minutes=daily_minutes,
+            days_per_week=days_per_week,
+            daily_minutes_source=(
+                "learner-provided" if args.daily_minutes is not None else "inferred-default"
+            ),
+            days_per_week_source=(
+                "learner-provided" if args.days_per_week is not None else "inferred-default"
+            ),
             constraints=args.constraints or "",
         )
         result["journey"] = create_journey(journey_args, emit_result=False)
@@ -472,8 +564,16 @@ def observe_profile(args: argparse.Namespace) -> None:
 
 def create_journey(args: argparse.Namespace, emit_result: bool = True) -> dict[str, Any]:
     vault = Vault(Path(args.vault))
-    if args.daily_minutes <= 0 or not 1 <= args.days_per_week <= 7:
+    daily_minutes = args.daily_minutes if args.daily_minutes is not None else 30
+    days_per_week = args.days_per_week if args.days_per_week is not None else 5
+    if daily_minutes <= 0 or not 1 <= days_per_week <= 7:
         raise KongziError("daily-minutes 必须大于 0，days-per-week 必须在 1 到 7 之间")
+    daily_source = getattr(args, "daily_minutes_source", None) or (
+        "learner-provided" if args.daily_minutes is not None else "inferred-default"
+    )
+    days_source = getattr(args, "days_per_week_source", None) or (
+        "learner-provided" if args.days_per_week is not None else "inferred-default"
+    )
     state = vault.state()
     journey_id = new_id("journey")
     journey = {
@@ -485,8 +585,12 @@ def create_journey(args: argparse.Namespace, emit_result: bool = True) -> dict[s
         "deadline": args.deadline,
         "constraints": args.constraints,
         "availability": {
-            "daily_minutes": args.daily_minutes,
-            "days_per_week": args.days_per_week,
+            "daily_minutes": daily_minutes,
+            "days_per_week": days_per_week,
+            "daily_minutes_source": daily_source,
+            "days_per_week_source": days_source,
+            "confirmed": daily_source == "learner-provided"
+            and days_source == "learner-provided",
         },
         "status": "intake",
         "created_at": iso(),
@@ -498,6 +602,7 @@ def create_journey(args: argparse.Namespace, emit_result: bool = True) -> dict[s
     config["active_journey_id"] = journey_id
     config["updated_at"] = iso()
     json_write(vault.config_path, config)
+    vault.refresh_dashboard()
     journey_dir = vault.notes / "Journeys" / journey["slug"]
     journey_dir.mkdir(parents=True, exist_ok=True)
     (journey_dir / "Journey.md").write_text(
@@ -508,8 +613,9 @@ def create_journey(args: argparse.Namespace, emit_result: bool = True) -> dict[s
             - 目标产出：{args.outcome}
             - 当前基础：{args.prior_knowledge or "待诊断"}
             - 截止日期：{args.deadline or "无硬截止"}
-            - 可用时间：每周 {args.days_per_week} 天，每天 {args.daily_minutes} 分钟
-            - 限制：{args.constraints or "无"}
+            - 可用时间：每周 {days_per_week} 天，每天 {daily_minutes} 分钟
+            - 时间来源：{"学习者已确认" if journey["availability"]["confirmed"] else "暂定默认，待画像确认"}
+            - 限制：{args.constraints.strip() if args.constraints and args.constraints.strip() else "未提供，待确认"}
 
             ## 完成定义
 
@@ -939,9 +1045,8 @@ def topo_sort(nodes: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     return ordered
 
 
-def render_map(args: argparse.Namespace) -> None:
-    vault = Vault(Path(args.vault))
-    journey_id, journey, state = require_journey(vault)
+def write_knowledge_map_view(vault: Vault, state: dict[str, Any], journey_id: str) -> Path:
+    journey = state["journeys"][journey_id]
     nodes = topo_sort(journey_nodes(state, journey_id))
     if not nodes:
         raise KongziError("当前旅程还没有知识节点")
@@ -953,42 +1058,86 @@ def render_map(args: argparse.Namespace) -> None:
     ]
     for node in nodes:
         safe_title = node["title"].replace('"', "'")
-        lines.append(f'  {node["id"]}["{safe_title}<br/>{node["knowledge_type"]} · {node["status"]}"]')
+        lines.append(
+            f'  {node["id"]}["{safe_title}<br/>{node["knowledge_type"]} · '
+            f'{node["status"]} · L{node["mastery"]["level"]}"]'
+        )
     for node in nodes:
         for prereq in node.get("prerequisites", []):
             if prereq in {n["id"] for n in nodes}:
                 lines.append(f"  {prereq} --> {node['id']}")
     lines.extend(["```", "", "## 节点清单", ""])
     for index, node in enumerate(nodes, start=1):
+        prerequisites = ", ".join(node.get("prerequisites", [])) or "无"
+        claims = ", ".join(node.get("claim_ids", []))
+        criterion = node.get("mastery_criterion", {})
         lines.append(
             f"{index}. **{node['title']}** · {node['knowledge_type']} · "
-            f"目标：{node['outcome']} · 状态：{node['status']}"
+            f"目标：{node['outcome']} · 状态：{node['status']}  \n"
+            f"   - 前置：{prerequisites}  \n"
+            f"   - 来源主张：{claims}  \n"
+            f"   - 掌握标准：阈值 {criterion.get('threshold')}；"
+            f"延迟通过 {criterion.get('delayed_passes')} 次；"
+            f"需要迁移 {criterion.get('requires_application')}"
         )
     path = vault.notes / "Journeys" / journey["slug"] / "Knowledge Map.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def render_map(args: argparse.Namespace) -> None:
+    vault = Vault(Path(args.vault))
+    journey_id, _, state = require_journey(vault)
+    path = write_knowledge_map_view(vault, state, journey_id)
+    nodes = journey_nodes(state, journey_id)
     event = vault.event("map.rendered", {"path": str(path), "node_count": len(nodes)}, journey_id)
     emit({"path": str(path), "nodes": len(nodes), "event_id": event["id"]})
 
 
 def build_plan(args: argparse.Namespace) -> None:
     vault = Vault(Path(args.vault))
-    if args.weeks <= 0 or args.sessions_per_week <= 0 or args.minutes <= 0:
-        raise KongziError("weeks、sessions-per-week、minutes 必须大于 0")
     journey_id, journey, state = require_journey(vault)
+    sessions_per_week = args.sessions_per_week or journey["availability"]["days_per_week"]
+    minutes = args.minutes or journey["availability"]["daily_minutes"]
+    if args.weeks <= 0 or sessions_per_week <= 0 or minutes <= 0:
+        raise KongziError("weeks、sessions-per-week、minutes 必须大于 0")
     nodes = topo_sort(journey_nodes(state, journey_id))
     if not nodes:
         raise KongziError("先从来源材料构建知识节点，再生成计划")
     start = dt.date.fromisoformat(args.start_date) if args.start_date else local_now(vault).date()
-    session_count = max(args.weeks * args.sessions_per_week, len(nodes))
+    session_count = max(args.weeks * sessions_per_week, len(nodes))
+    profile = vault.profile()
+    self_reported = profile.get("self_reported", {})
+    previous_plan_id = journey.get("active_plan_id")
+    previous_plan = state.get("plans", {}).get(previous_plan_id)
+    if not previous_plan:
+        previous_plan_id = None
+    plan_id = new_id("plan")
+    occurrences: dict[str, int] = {}
     sessions: list[dict[str, Any]] = []
     for index in range(session_count):
-        node = nodes[min(index, len(nodes) - 1)]
-        week = index // args.sessions_per_week
-        within_week = index % args.sessions_per_week
-        offset = week * 7 + round(within_week * 6 / max(args.sessions_per_week - 1, 1))
+        if index < len(nodes):
+            node = nodes[index]
+        else:
+            node = nodes[(index - len(nodes)) % len(nodes)]
+        occurrence = occurrences.get(node["id"], 0)
+        mode = "learn" if occurrence == 0 else "practice" if occurrence == 1 else "integrate"
+        occurrences[node["id"]] = occurrence + 1
+        week = index // sessions_per_week
+        within_week = index % sessions_per_week
+        offset = week * 7 + round(within_week * 6 / max(sessions_per_week - 1, 1))
         date = start + dt.timedelta(days=offset)
-        mode = "learn" if index < len(nodes) else "integrate"
+        criterion = node.get(
+            "mastery_criterion",
+            DEFAULT_MASTERY_CRITERIA[node["knowledge_type"]],
+        )
+        if mode == "learn":
+            required_output = node["outcome"]
+        elif mode == "practice":
+            required_output = f"闭卷独立完成并纠错：{node['outcome']}"
+        else:
+            required_output = f"在新情境完成、解释并迁移：{node['outcome']}"
         sessions.append(
             {
                 "sequence": index + 1,
@@ -996,23 +1145,68 @@ def build_plan(args: argparse.Namespace) -> None:
                 "node_id": node["id"],
                 "node_title": node["title"],
                 "mode": mode,
-                "minutes": args.minutes,
-                "required_output": node["outcome"],
+                "minutes": minutes,
+                "minimum_viable_minutes": max(8, min(minutes, round(minutes * 0.35))),
+                "method": METHOD_BY_TYPE[node["knowledge_type"]][mode],
+                "required_output": required_output,
+                "success_criterion": (
+                    f"得分 ≥ {criterion['threshold']:.2f}；"
+                    f"掌握仍需 {criterion['delayed_passes']} 次延迟通过"
+                ),
                 "status": "planned",
             }
         )
-    plan_id = new_id("plan")
     plan = {
         "id": plan_id,
         "journey_id": journey_id,
         "start_date": start.isoformat(),
         "weeks": args.weeks,
-        "sessions_per_week": args.sessions_per_week,
-        "minutes_per_session": args.minutes,
+        "sessions_per_week": sessions_per_week,
+        "minutes_per_session": minutes,
         "sessions": sessions,
+        "basis": {
+            "reason": args.reason
+            or ("根据当前学习证据重新规划" if previous_plan else "根据目标、画像与来源建立初始计划"),
+            "profile_fields": {
+                key: self_reported[key]
+                for key in REQUIRED_PROFILE_FIELDS
+                if key in self_reported
+            },
+            "observed_evidence_count": len(
+                profile.get("observed", {}).get("calibration", [])
+            ),
+            "schedule": {
+                "sessions_per_week": sessions_per_week,
+                "minutes_per_session": minutes,
+                "source": (
+                    "explicit-plan-command"
+                    if args.sessions_per_week is not None or args.minutes is not None
+                    else "active-journey-availability"
+                ),
+            },
+            "source_count": len(
+                [
+                    source
+                    for source in state.get("sources", {}).values()
+                    if source.get("journey_id") == journey_id
+                ]
+            ),
+            "claim_count": len(
+                [
+                    claim
+                    for claim in state.get("claims", {}).values()
+                    if claim.get("journey_id") == journey_id
+                ]
+            ),
+        },
+        "supersedes_plan_id": previous_plan_id,
         "created_at": iso(),
         "status": "active",
     }
+    if previous_plan:
+        previous_plan["status"] = "superseded"
+        previous_plan["superseded_at"] = iso()
+        previous_plan["superseded_by"] = plan_id
     state.setdefault("plans", {})[plan_id] = plan
     state["journeys"][journey_id]["status"] = "planned"
     state["journeys"][journey_id]["active_plan_id"] = plan_id
@@ -1021,19 +1215,29 @@ def build_plan(args: argparse.Namespace) -> None:
         f"# {journey['goal']} · 学习计划",
         "",
         f"- 周期：{args.weeks} 周",
-        f"- 节奏：每周 {args.sessions_per_week} 次，每次 {args.minutes} 分钟",
+        f"- 节奏：每周 {sessions_per_week} 次，每次 {minutes} 分钟",
+        f"- 最小可行会话：{sessions[0]['minimum_viable_minutes']} 分钟",
+        f"- 规划依据：{plan['basis']['reason']}",
+        f"- 画像字段：{', '.join(plan['basis']['profile_fields']) or '待补充'}",
+        f"- 证据覆盖：{plan['basis']['source_count']} 个来源，{plan['basis']['claim_count']} 条主张",
         "- 规则：每次先闭卷输出，评分后纠错；到期复习优先于新内容。",
         "",
-        "| # | 日期 | 节点 | 模式 | 必须产出 |",
-        "|---:|---|---|---|---|",
+        "| # | 日期 | 节点 | 模式 | 方法 | 必须产出 | 最小会话 |",
+        "|---:|---|---|---|---|---|---:|",
     ]
     for item in sessions:
         lines.append(
             f"| {item['sequence']} | {item['date']} | {md_escape(item['node_title'])} | "
-            f"{item['mode']} | {md_escape(item['required_output'])} |"
+            f"{item['mode']} | {md_escape(item['method'])} | "
+            f"{md_escape(item['required_output'])} | {item['minimum_viable_minutes']} 分钟 |"
         )
-    path = vault.notes / "Journeys" / journey["slug"] / "Learning Plan.md"
+    journey_dir = vault.notes / "Journeys" / journey["slug"]
+    path = journey_dir / f"Learning Plan--{plan_id[-6:]}.md"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (journey_dir / "Learning Plan.md").write_text(
+        f"# 当前学习计划\n\n- [[{path.stem}]]\n- 更新原因：{plan['basis']['reason']}\n",
+        encoding="utf-8",
+    )
     event = vault.event(
         "plan.created",
         {"plan": plan, "path": str(path)},
@@ -1070,6 +1274,8 @@ def start_session(args: argparse.Namespace) -> None:
         "finished_at": None,
         "answer_ids": [],
         "grade_ids": [],
+        "question_ids": [],
+        "explanation_ids": [],
         "minutes": None,
         "reflection": None,
         "plan_id": active_plan_id if plan_item else None,
@@ -1077,6 +1283,8 @@ def start_session(args: argparse.Namespace) -> None:
     }
     state.setdefault("sessions", {})[session_id] = session
     state["nodes"][args.node_id]["status"] = "learning"
+    state["journeys"][journey_id]["status"] = "learning"
+    state["journeys"][journey_id]["updated_at"] = iso()
     vault.save_state(state)
     event = vault.event("session.started", session, journey_id)
     emit(
@@ -1101,6 +1309,15 @@ def record_answer(args: argparse.Namespace) -> None:
         raise KongziError(f"kind 必须是：{', '.join(sorted(QUESTION_KINDS))}")
     if not args.answer.strip():
         raise KongziError("用户作答不能为空；Agent 不得代替用户输出")
+    explanation = None
+    if args.explanation_id:
+        explanation = state.get("explanations", {}).get(args.explanation_id)
+        if not explanation or explanation["session_id"] != args.session_id:
+            raise KongziError(f"当前会话中不存在讲解：{args.explanation_id}")
+        if explanation.get("check_answer_id"):
+            raise KongziError(f"该讲解已经有复述作答：{explanation['check_answer_id']}")
+        if args.question.strip() != explanation["check_question"].strip():
+            raise KongziError("复述题必须与讲解记录中的 check_question 完全一致")
     answer_id = new_id("ans")
     answer = {
         "id": answer_id,
@@ -1110,14 +1327,103 @@ def record_answer(args: argparse.Namespace) -> None:
         "kind": args.kind,
         "question": args.question,
         "answer": args.answer,
+        "explanation_id": args.explanation_id,
         "answered_at": iso(),
         "grade_id": None,
     }
     state.setdefault("answers", {})[answer_id] = answer
     state["sessions"][args.session_id]["answer_ids"].append(answer_id)
+    if explanation:
+        state["explanations"][args.explanation_id]["check_answer_id"] = answer_id
     vault.save_state(state)
     event = vault.event("answer.recorded", answer, journey_id)
     emit({"answer": answer, "event_id": event["id"], "next": f"session grade --answer-id {answer_id}"})
+
+
+def record_learner_question(args: argparse.Namespace) -> None:
+    vault = Vault(Path(args.vault))
+    journey_id, _, state = require_journey(vault)
+    session = state.get("sessions", {}).get(args.session_id)
+    if not session or session["journey_id"] != journey_id:
+        raise KongziError(f"当前旅程中不存在会话：{args.session_id}")
+    if session["status"] != "active":
+        raise KongziError("只能在 active 会话中记录学习者提问")
+    if not args.question.strip():
+        raise KongziError("学习者提问不能为空")
+    question_id = new_id("qst")
+    question = {
+        "id": question_id,
+        "journey_id": journey_id,
+        "session_id": args.session_id,
+        "node_id": session["node_id"],
+        "question": args.question.strip(),
+        "asked_at": iso(),
+        "explanation_id": None,
+    }
+    state.setdefault("learner_questions", {})[question_id] = question
+    state["sessions"][args.session_id].setdefault("question_ids", []).append(question_id)
+    vault.save_state(state)
+    event = vault.event("learner.questioned", question, journey_id)
+    emit(
+        {
+            "question": question,
+            "event_id": event["id"],
+            "instruction": "先确认疑惑，再用已登记 claim 耐心解释；最后必须给一个复述或迁移检查题。",
+            "next": f"session explain --question-id {question_id}",
+        }
+    )
+
+
+def record_explanation(args: argparse.Namespace) -> None:
+    vault = Vault(Path(args.vault))
+    journey_id, _, state = require_journey(vault)
+    question = state.get("learner_questions", {}).get(args.question_id)
+    if not question or question["journey_id"] != journey_id:
+        raise KongziError(f"当前旅程中不存在学习者提问：{args.question_id}")
+    session = state.get("sessions", {}).get(question["session_id"])
+    if not session or session["status"] != "active":
+        raise KongziError("只能在 active 会话中记录导师讲解")
+    if question.get("explanation_id"):
+        raise KongziError(f"该提问已经有讲解：{question['explanation_id']}")
+    if not args.response.strip() or not args.check_question.strip():
+        raise KongziError("导师讲解与理解检查题都不能为空")
+    if not args.claim:
+        raise KongziError("知识讲解必须至少引用一个带定位符的 claim")
+    for claim_id in args.claim:
+        claim = state.get("claims", {}).get(claim_id)
+        if not claim or claim["journey_id"] != journey_id:
+            raise KongziError(f"讲解引用的主张不存在：{claim_id}")
+    explanation_id = new_id("exp")
+    explanation = {
+        "id": explanation_id,
+        "journey_id": journey_id,
+        "session_id": question["session_id"],
+        "node_id": question["node_id"],
+        "question_id": question["id"],
+        "response": args.response.strip(),
+        "claim_ids": args.claim,
+        "check_question": args.check_question.strip(),
+        "check_answer_id": None,
+        "explained_at": iso(),
+    }
+    state.setdefault("explanations", {})[explanation_id] = explanation
+    state["learner_questions"][args.question_id]["explanation_id"] = explanation_id
+    state["sessions"][question["session_id"]].setdefault("explanation_ids", []).append(
+        explanation_id
+    )
+    vault.save_state(state)
+    event = vault.event("mentor.explained", explanation, journey_id)
+    emit(
+        {
+            "explanation": explanation,
+            "event_id": event["id"],
+            "instruction": "现在停止讲解并等待学习者用自己的话作答；不得替用户完成理解检查。",
+            "next": (
+                "session answer "
+                f"--session-id {question['session_id']} --explanation-id {explanation_id}"
+            ),
+        }
+    )
 
 
 def schedule_card(
@@ -1254,6 +1560,20 @@ def finish_session(args: argparse.Namespace) -> None:
         raise KongziError("confidence 必须在 0 到 1 之间")
     if not session["answer_ids"]:
         raise KongziError("会话必须至少记录一次用户输出，不能只有 Agent 讲解")
+    unresolved = [
+        qid
+        for qid in session.get("question_ids", [])
+        if not state.get("learner_questions", {}).get(qid, {}).get("explanation_id")
+    ]
+    if unresolved:
+        raise KongziError(f"会话仍有未回答的学习者提问：{', '.join(unresolved)}")
+    unchecked = [
+        eid
+        for eid in session.get("explanation_ids", [])
+        if not state.get("explanations", {}).get(eid, {}).get("check_answer_id")
+    ]
+    if unchecked:
+        raise KongziError(f"导师讲解后仍未完成学习者复述检查：{', '.join(unchecked)}")
     ungraded = [aid for aid in session["answer_ids"] if not state["answers"][aid].get("grade_id")]
     if ungraded:
         raise KongziError(f"会话仍有未评分作答：{', '.join(ungraded)}")
@@ -1455,6 +1775,9 @@ def generate_report(args: argparse.Namespace, emit_result: bool = True) -> dict[
     ]
     grades = [event["payload"] for event in events if event["type"] == "answer.graded"]
     reviews = [event["payload"] for event in events if event["type"] == "review.answered"]
+    explanations = [
+        event["payload"] for event in events if event["type"] == "mentor.explained"
+    ]
     minutes = sum(item.get("minutes") or 0 for item in sessions)
     scores = [float(item["score"]) for item in grades] + [float(item["score"]) for item in reviews]
     average = round(sum(scores) / len(scores), 3) if scores else None
@@ -1472,6 +1795,17 @@ def generate_report(args: argparse.Namespace, emit_result: bool = True) -> dict[
         key=lambda item: item["level"],
     )
     due = due_cards(vault, journey_id)
+    oldest_due = min((parse_datetime(item["due_at"]) for item in due), default=None)
+    oldest_due_local = (
+        oldest_due.astimezone(vault_timezone(vault)).replace(microsecond=0).isoformat()
+        if oldest_due
+        else None
+    )
+    max_overdue_hours = (
+        round(max(0.0, (now() - oldest_due).total_seconds() / 3600), 1)
+        if oldest_due
+        else 0.0
+    )
     overdue_plan = []
     plan_id = journey.get("active_plan_id")
     plan = state.get("plans", {}).get(plan_id)
@@ -1498,9 +1832,12 @@ def generate_report(args: argparse.Namespace, emit_result: bool = True) -> dict[
         "minutes": minutes,
         "sessions_finished": len(sessions),
         "answers_graded": len(grades),
+        "learner_questions_answered": len(explanations),
         "reviews_completed": len(reviews),
         "average_score": average,
         "due_reviews": len(due),
+        "oldest_due_at": oldest_due_local,
+        "max_overdue_hours": max_overdue_hours,
         "overdue_planned_sessions": len(overdue_plan),
         "not_mastered": weak,
         "next_move": next_move,
@@ -1512,36 +1849,42 @@ def generate_report(args: argparse.Namespace, emit_result: bool = True) -> dict[
     rows = "\n".join(
         f"- {item['title']} · Level {item['level']} · {item['status']}" for item in weak[:8]
     ) or "- 暂无"
-    path.write_text(
-        textwrap.dedent(
-            f"""\
-            # Kongzi {args.kind.title()} Report · {label}
-
-            ## 本周期
-
-            - 学习时长：{minutes} 分钟
-            - 完成会话：{len(sessions)}
-            - 已评分输出：{len(grades)}
-            - 延迟复习：{len(reviews)}
-            - 平均得分：{average if average is not None else "暂无"}
-            - 当前到期复习：{len(due)}
-            - 逾期计划会话：{len(overdue_plan)}
-
-            ## 尚未掌握
-
-            {rows}
-
-            ## 唯一下一步
-
-            {next_move}
-
-            ## 证据事件
-
-            {chr(10).join(f"- `{event['id']}` · {event['type']}" for event in events) or "- 本周期无事件"}
-            """
-        ),
-        encoding="utf-8",
+    event_rows = (
+        "\n".join(f"- `{event['id']}` · {event['type']}" for event in events)
+        or "- 本周期无事件"
     )
+    report_markdown = "\n".join(
+        [
+            f"# Kongzi {args.kind.title()} Report · {label}",
+            "",
+            "## 本周期",
+            "",
+            f"- 学习时长：{minutes} 分钟",
+            f"- 完成会话：{len(sessions)}",
+            f"- 已评分输出：{len(grades)}",
+            f"- 已回答学习疑问：{len(explanations)}",
+            f"- 延迟复习：{len(reviews)}",
+            f"- 平均得分：{average if average is not None else '暂无'}",
+            f"- 当前到期复习：{len(due)}",
+            f"- 最早到期：{oldest_due_local or '无'}",
+            f"- 最大逾期：{max_overdue_hours} 小时",
+            f"- 逾期计划会话：{len(overdue_plan)}",
+            "",
+            "## 尚未掌握",
+            "",
+            rows,
+            "",
+            "## 唯一下一步",
+            "",
+            next_move,
+            "",
+            "## 证据事件",
+            "",
+            event_rows,
+            "",
+        ]
+    )
+    path.write_text(report_markdown, encoding="utf-8")
     event = vault.event("report.generated", {"kind": args.kind, "period": label, "path": str(path)}, journey_id)
     result = {"report": report, "path": str(path), "event_id": event["id"]}
     if emit_result:
@@ -1929,43 +2272,45 @@ def reminder_generate(args: argparse.Namespace) -> None:
     script = Path(__file__).resolve()
     if args.method == "launchd":
         hour, minute = (int(item) for item in args.time.split(":", 1))
+        label = f"dev.kongzi.review-reminder.{sha256_bytes(str(vault.root).encode())[:8]}"
         plist = textwrap.dedent(
             f"""\
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
-              <key>Label</key><string>dev.kongzi.review-reminder</string>
+              <key>Label</key><string>{label}</string>
               <key>ProgramArguments</key>
               <array>
-                <string>{sys.executable}</string>
-                <string>{script}</string>
+                <string>{html.escape(sys.executable)}</string>
+                <string>{html.escape(str(script))}</string>
                 <string>reminder</string><string>notify</string>
-                <string>--vault</string><string>{vault.root}</string>
+                <string>--vault</string><string>{html.escape(str(vault.root))}</string>
                 <string>--reports</string>
               </array>
               <key>StartCalendarInterval</key>
               <dict><key>Hour</key><integer>{hour}</integer><key>Minute</key><integer>{minute}</integer></dict>
-              <key>StandardOutPath</key><string>{vault.meta / "reminder.log"}</string>
-              <key>StandardErrorPath</key><string>{vault.meta / "reminder-error.log"}</string>
+              <key>StandardOutPath</key><string>{html.escape(str(vault.meta / "reminder.log"))}</string>
+              <key>StandardErrorPath</key><string>{html.escape(str(vault.meta / "reminder-error.log"))}</string>
             </dict>
             </plist>
             """
         )
-        path = vault.meta / "reminders" / "dev.kongzi.review-reminder.plist"
+        path = vault.meta / "reminders" / f"{label}.plist"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(plist, encoding="utf-8")
-        install_command = f"launchctl bootstrap gui/$(id -u) {path}"
+        install_command = f"launchctl bootstrap gui/$(id -u) {shlex.quote(str(path))}"
     else:
         minute, hour = (int(args.time.split(":")[1]), int(args.time.split(":")[0]))
         path = vault.meta / "reminders" / "cron.txt"
         path.parent.mkdir(parents=True, exist_ok=True)
         cron = (
-            f"{minute} {hour} * * * {sys.executable} {script} reminder notify "
-            f"--vault {vault.root} --reports\n"
+            f"{minute} {hour} * * * {shlex.quote(sys.executable)} "
+            f"{shlex.quote(str(script))} reminder notify "
+            f"--vault {shlex.quote(str(vault.root))} --reports\n"
         )
         path.write_text(cron, encoding="utf-8")
-        install_command = f"(crontab -l; cat {path}) | crontab -"
+        install_command = f"(crontab -l; cat {shlex.quote(str(path))}) | crontab -"
     config = vault.config()
     config["reminders"] = {
         "method": args.method,
@@ -2035,11 +2380,11 @@ def reminder_notify(args: argparse.Namespace) -> None:
     )
 
 
-def show_status(args: argparse.Namespace) -> None:
-    vault = Vault(Path(args.vault))
+def status_payload(vault: Vault) -> dict[str, Any]:
     config = vault.config()
     state = vault.state()
     profile = vault.profile()
+    missing_profile = missing_profile_fields(profile)
     journey_id = config.get("active_journey_id")
     journey = state.get("journeys", {}).get(journey_id)
     nodes = journey_nodes(state, journey_id) if journey_id else []
@@ -2056,25 +2401,46 @@ def show_status(args: argparse.Namespace) -> None:
         item for item in state.get("claims", {}).values() if item.get("journey_id") == journey_id
     ]
     due = due_cards(vault, journey_id) if journey_id else []
+    scheduled_cards = sorted(
+        [
+            item
+            for item in vault.queue().get("cards", {}).values()
+            if item.get("journey_id") == journey_id and item.get("status") != "suspended"
+        ],
+        key=lambda item: item["due_at"],
+    )
+    future_cards = [item for item in scheduled_cards if parse_datetime(item["due_at"]) > now()]
+    next_review_at = (
+        parse_datetime(future_cards[0]["due_at"])
+        .astimezone(vault_timezone(vault))
+        .replace(microsecond=0)
+        .isoformat()
+        if future_cards
+        else None
+    )
     overdue_plan = []
+    planned_remaining = []
     if journey:
         plan_id = journey.get("active_plan_id")
         plan = state.get("plans", {}).get(plan_id)
         if plan:
             today = local_now(vault).date()
+            planned_remaining = [
+                item for item in plan.get("sessions", []) if item["status"] == "planned"
+            ]
             overdue_plan = [
                 item
-                for item in plan.get("sessions", [])
-                if item["status"] == "planned" and dt.date.fromisoformat(item["date"]) < today
+                for item in planned_remaining
+                if dt.date.fromisoformat(item["date"]) < today
             ]
-    if not journey:
-        next_action = "创建学习旅程"
-    elif due:
+    if due:
         next_action = f"完成 {len(due)} 张到期复习卡"
     elif active_sessions:
         next_action = f"继续会话 {active_sessions[0]['id']}"
-    elif len(profile.get("interviews", [])) < 6:
-        next_action = "完成画像访谈"
+    elif missing_profile:
+        next_action = f"完成画像访谈，下一项：{missing_profile[0]}"
+    elif not journey:
+        next_action = "创建学习旅程"
     elif not sources:
         next_action = "录入至少一份学习资料"
     elif not claims:
@@ -2083,24 +2449,51 @@ def show_status(args: argparse.Namespace) -> None:
         next_action = "构建知识地图节点"
     elif overdue_plan:
         next_action = f"补做 {len(overdue_plan)} 个逾期计划会话，先从 {overdue_plan[0]['node_title']} 开始"
+    elif planned_remaining:
+        next_action = f"开始计划会话 #{planned_remaining[0]['sequence']}：{planned_remaining[0]['node_title']}"
+    elif next_review_at:
+        next_action = f"在 {next_review_at} 完成下一次延迟复习（当前计划已完成）"
+    elif all(node["status"] == "mastered" for node in nodes):
+        next_action = "生成结业总结与保持性复习计划"
     else:
-        next_action = "开始计划中的下一次学习会话"
-    emit(
-        {
-            "vault": str(vault.root),
-            "active_journey": journey,
-            "profile_interview_items": len(profile.get("interviews", [])),
-            "sources": len(sources),
-            "claims": len(claims),
-            "nodes": statuses,
-            "due_reviews": len(due),
-            "active_sessions": active_sessions,
-            "plan_drift": {"overdue_count": len(overdue_plan), "sessions": overdue_plan[:5]},
-            "mentor": state.get("mentor"),
-            "reminders": config.get("reminders"),
-            "next_action": next_action,
-        }
-    )
+        next_action = "根据当前表现重规划下一学习周期"
+    return {
+        "vault": str(vault.root),
+        "initialized": True,
+        "active_journey": journey,
+        "profile_interview_items": len(profile.get("interviews", [])),
+        "missing_profile_fields": missing_profile,
+        "sources": len(sources),
+        "claims": len(claims),
+        "nodes": statuses,
+        "due_reviews": len(due),
+        "next_review_at": next_review_at,
+        "active_sessions": active_sessions,
+        "planned_sessions_remaining": len(planned_remaining),
+        "plan_drift": {"overdue_count": len(overdue_plan), "sessions": overdue_plan[:5]},
+        "mentor": state.get("mentor"),
+        "reminders": config.get("reminders"),
+        "next_action": next_action,
+    }
+
+
+def show_status(args: argparse.Namespace) -> None:
+    vault = Vault(Path(args.vault))
+    if not vault.config_path.exists():
+        emit(
+            {
+                "vault": str(vault.root),
+                "initialized": False,
+                "active_journey": None,
+                "due_reviews": 0,
+                "active_sessions": [],
+                "next_action": f"初始化 Kongzi 学习空间：init --vault {vault.root}",
+            }
+        )
+        return
+    payload = status_payload(vault)
+    vault.refresh_dashboard(payload)
+    emit(payload)
 
 
 def copy_pre_repair(path: Path) -> str | None:
@@ -2135,6 +2528,8 @@ def rebuild_from_events(vault: Vault) -> tuple[dict[str, Any], dict[str, Any], d
         "sessions": {},
         "answers": {},
         "grades": {},
+        "learner_questions": {},
+        "explanations": {},
         "notes": {},
         "mentor": {"enabled": False, "name": None, "persona_path": None},
     }
@@ -2191,6 +2586,23 @@ def rebuild_from_events(vault: Vault) -> tuple[dict[str, Any], dict[str, Any], d
             session = state["sessions"].get(payload["session_id"])
             if session and payload["id"] not in session.setdefault("answer_ids", []):
                 session["answer_ids"].append(payload["id"])
+            explanation_id = payload.get("explanation_id")
+            explanation = state["explanations"].get(explanation_id)
+            if explanation:
+                explanation["check_answer_id"] = payload["id"]
+        elif kind == "learner.questioned":
+            state["learner_questions"][payload["id"]] = payload
+            session = state["sessions"].get(payload["session_id"])
+            if session and payload["id"] not in session.setdefault("question_ids", []):
+                session["question_ids"].append(payload["id"])
+        elif kind == "mentor.explained":
+            state["explanations"][payload["id"]] = payload
+            question = state["learner_questions"].get(payload["question_id"])
+            if question:
+                question["explanation_id"] = payload["id"]
+            session = state["sessions"].get(payload["session_id"])
+            if session and payload["id"] not in session.setdefault("explanation_ids", []):
+                session["explanation_ids"].append(payload["id"])
         elif kind == "answer.graded":
             grade = payload
             state["grades"][grade["id"]] = grade
@@ -2482,6 +2894,21 @@ def doctor(args: argparse.Namespace) -> None:
             parse_datetime(card["due_at"])
         except (ValueError, KeyError):
             problems.append(f"复习卡 {card['id']} due_at 无效")
+    for question in state.get("learner_questions", {}).values():
+        if question.get("session_id") not in state.get("sessions", {}):
+            problems.append(f"学习者提问 {question['id']} 指向未知会话")
+        explanation_id = question.get("explanation_id")
+        if explanation_id and explanation_id not in state.get("explanations", {}):
+            problems.append(f"学习者提问 {question['id']} 指向未知讲解")
+    for explanation in state.get("explanations", {}).values():
+        if explanation.get("question_id") not in state.get("learner_questions", {}):
+            problems.append(f"导师讲解 {explanation['id']} 指向未知提问")
+        for claim_id in explanation.get("claim_ids", []):
+            if claim_id not in state.get("claims", {}):
+                problems.append(f"导师讲解 {explanation['id']} 引用了未知主张 {claim_id}")
+        answer_id = explanation.get("check_answer_id")
+        if answer_id and answer_id not in state.get("answers", {}):
+            problems.append(f"导师讲解 {explanation['id']} 指向未知复述作答")
     event_ids = [event["id"] for event in events]
     if len(event_ids) != len(set(event_ids)):
         problems.append("事件 ID 重复")
@@ -2512,7 +2939,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="kongzi",
         description="Kongzi AI Mentor 的本地状态、证据、复习与报告引擎",
     )
-    parser.add_argument("--version", action="version", version="Kongzi 0.1.0")
+    parser.add_argument("--version", action="version", version="Kongzi 0.1.1")
     sub = parser.add_subparsers(dest="command", required=True)
 
     init_p = sub.add_parser("init", help="初始化 Obsidian/Kongzi 学习空间")
@@ -2525,8 +2952,8 @@ def build_parser() -> argparse.ArgumentParser:
     init_p.add_argument("--outcome")
     init_p.add_argument("--prior-knowledge")
     init_p.add_argument("--deadline")
-    init_p.add_argument("--daily-minutes", type=int, default=30)
-    init_p.add_argument("--days-per-week", type=int, default=5)
+    init_p.add_argument("--daily-minutes", type=int)
+    init_p.add_argument("--days-per-week", type=int)
     init_p.add_argument("--constraints")
     init_p.add_argument("--force", action="store_true")
     init_p.set_defaults(func=initialize)
@@ -2561,8 +2988,8 @@ def build_parser() -> argparse.ArgumentParser:
     jcreate.add_argument("--outcome", required=True)
     jcreate.add_argument("--prior-knowledge", default="")
     jcreate.add_argument("--deadline")
-    jcreate.add_argument("--daily-minutes", type=int, default=30)
-    jcreate.add_argument("--days-per-week", type=int, default=5)
+    jcreate.add_argument("--daily-minutes", type=int)
+    jcreate.add_argument("--days-per-week", type=int)
     jcreate.add_argument("--constraints", default="")
     jcreate.set_defaults(func=create_journey)
     jlist = journey_sub.add_parser("list")
@@ -2634,9 +3061,10 @@ def build_parser() -> argparse.ArgumentParser:
     pbuild = plan_sub.add_parser("build")
     add_common_vault(pbuild)
     pbuild.add_argument("--weeks", type=int, default=4)
-    pbuild.add_argument("--sessions-per-week", type=int, default=5)
-    pbuild.add_argument("--minutes", type=int, default=30)
+    pbuild.add_argument("--sessions-per-week", type=int)
+    pbuild.add_argument("--minutes", type=int)
     pbuild.add_argument("--start-date")
+    pbuild.add_argument("--reason", help="本次规划或重规划的证据依据")
     pbuild.set_defaults(func=build_plan)
 
     session_p = sub.add_parser("session", help="执行学习会话的输出—评分—纠错闭环")
@@ -2652,7 +3080,23 @@ def build_parser() -> argparse.ArgumentParser:
     sanswer.add_argument("--kind", choices=sorted(QUESTION_KINDS), required=True)
     sanswer.add_argument("--question", required=True)
     sanswer.add_argument("--answer", required=True)
+    sanswer.add_argument(
+        "--explanation-id",
+        help="若本次作答是导师讲解后的复述检查，关联对应 exp_ ID",
+    )
     sanswer.set_defaults(func=record_answer)
+    squestion = session_sub.add_parser("question")
+    add_common_vault(squestion)
+    squestion.add_argument("--session-id", required=True)
+    squestion.add_argument("--question", required=True)
+    squestion.set_defaults(func=record_learner_question)
+    sexplain = session_sub.add_parser("explain")
+    add_common_vault(sexplain)
+    sexplain.add_argument("--question-id", required=True)
+    sexplain.add_argument("--response", required=True)
+    sexplain.add_argument("--claim", action="append", default=[])
+    sexplain.add_argument("--check-question", required=True)
+    sexplain.set_defaults(func=record_explanation)
     sgrade = session_sub.add_parser("grade")
     add_common_vault(sgrade)
     sgrade.add_argument("--answer-id", required=True)

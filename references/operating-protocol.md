@@ -36,6 +36,20 @@ Use this adaptive sequence:
 9. Ask a contrasting or transfer prompt when the first answer may reflect memorization.
 10. Finish only after all answers are graded; record reflection, time, and confidence.
 
+## Learner-question interruption
+
+The learner may ask “why,” “what does this mean,” or “how is this different” at any time. Do not defer a question merely to protect the plan.
+
+1. Run `session question` with the exact wording.
+2. Confirm the ambiguity in one sentence.
+3. Answer only from registered claims. If those claims are insufficient, pause, retrieve/register a source, and say what changed.
+4. Choose the smallest explanation that can unblock the learner: definition plus example, contrast, analogy, or prerequisite.
+5. Run `session explain` with the claim IDs and one check question.
+6. Wait for the learner. Record the restatement/application using `session answer --explanation-id`.
+7. Grade the check and either resume, try a different explanation, or split the prerequisite.
+
+An explanation without a learner check is incomplete. An unresolved learner question blocks `session finish`.
+
 ## Adaptation rules
 
 - Low accuracy: reduce scope, add worked example, then faded guidance.
