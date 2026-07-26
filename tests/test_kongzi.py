@@ -813,7 +813,7 @@ class KongziCLITest(unittest.TestCase):
         self.assertFalse((output / ".harness").exists())
         self.assertFalse((output / "docs").exists())
 
-    def test_readme_structure_and_upstream_acknowledgement_boundary(self) -> None:
+    def test_readme_structure_and_open_source_acknowledgements(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         headings = [
             line
@@ -832,11 +832,8 @@ class KongziCLITest(unittest.TestCase):
                 "### 使用",
                 "## Kongzi 覆盖什么",
                 "### 诚实边界",
-                "## 已集成能力",
-                "### 完整运行时集成",
-                "### 构建参考",
+                "## 构建参考",
                 "## 贡献与社区",
-                "## Darwin.skill：让 Kongzi 持续进化",
                 "## 学习方法如何选择",
                 "## 仓库结构",
                 "## 背后的故事",
@@ -847,7 +844,16 @@ class KongziCLITest(unittest.TestCase):
         self.assertNotIn("scripts/install_integrations.py", readme)
         self.assertNotIn("/Kongzi integration", readme)
         self.assertNotIn("在 Kongzi 中的用途", readme)
-        self.assertIn("只作致谢与来源声明", readme)
+        for project in (
+            "atlax-tech/harness-armor",
+            "iamzifei/show-me-the-money",
+            "XBuilderLAB/cheat-on-content",
+            "kangarooking/cangjie-skill",
+            "alchaincyf/nuwa-skill",
+            "alchaincyf/darwin-skill",
+            "kangarooking/kangarooking-skills",
+        ):
+            self.assertIn(project, readme)
 
 
 if __name__ == "__main__":
