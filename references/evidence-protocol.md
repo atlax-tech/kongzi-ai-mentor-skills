@@ -47,6 +47,8 @@ Use source-backed claims to judge factual accuracy. A grade should distinguish:
 
 Record the learner's exact answer before giving the grade. Feedback should cite claim IDs, not merely say "correct."
 
+Factual explanations prompted by a learner question follow the same rule: record the question, cite approved claim IDs in the explanation record, and require a restatement or application check. If no registered claim supports the answer, retrieve evidence before explaining or label the gap unresolved.
+
 ## Public web research
 
 The Agent may search and crawl public pages using its available browser/web tools. Use primary sources for technical questions and current authoritative pages for time-sensitive facts. Register the actual opened page. If access is blocked, ask the learner for a file or choose another authoritative public source; never fill the gap with fabricated detail.

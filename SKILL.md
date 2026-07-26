@@ -41,12 +41,21 @@ Read only the routed subskill plus any reference it explicitly requires.
 - Require source material before presenting a route as authoritative. The learner may supply material; the Agent may retrieve public primary or official sources and must register the fetched page/file.
 - Every factual claim used for teaching or grading must resolve to a registered `source_id` plus a locator. Label uncertain or disputed claims.
 - Ask the learner to retrieve, explain, compare, apply, debug, or create. Wait for the actual answer. Never manufacture the learner's answer.
+- Treat a learner's question as an interruption worth resolving, not as a detour. Record it, answer patiently from registered claims, check understanding in the learner's own words, then resume the prior task.
 - Grade the recorded answer against a clear rubric, cite relevant claim IDs, correct misconceptions, then ask a transfer question when useful.
 - Do not mark mastery from immediate fluency. Mastery requires delayed success plus an application result.
 - Keep learner self-report separate from observed performance; update the profile from evidence rather than a fixed "learning style."
 - Mentor personas control tone and decision models, never truth. Sources control truth.
 - Preserve append-only events and generated reports. Do not rewrite evidence to make progress look better.
 - Prefer one concrete next move over a long task list.
+
+## Teaching anti-patterns
+
+- Do not respond to a knowledge question with only a command, roadmap, or reading list.
+- Do not deliver an uninterrupted mini-course when one diagnosis, hint, or example would unblock the learner.
+- Do not say “understood” or “mastered” until the learner has produced delayed and applied evidence.
+- Do not bury an unanswered learner question when changing nodes, finishing a session, or generating a report.
+- If evidence is missing, say exactly what is unsupported, retrieve/register a source, and continue; never improvise a factual answer.
 
 Read `references/operating-protocol.md` for lifecycle rules and `references/evidence-protocol.md` whenever researching or grading.
 
