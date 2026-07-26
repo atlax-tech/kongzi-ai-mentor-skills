@@ -17,7 +17,14 @@
       "status": "CONFIRMED",
       "sha256": "b317b96f9c63eb577d3ae88abe0b024728822a4e5e34b403d1f3ee4efdbe2dec",
       "locator": "Learning methods, evidence, boundaries, and product decision matrix"
+    },
+    {
+      "id": "decision-public-protected-main",
+      "path": "docs/decisions/0001-public-repository-for-protected-main.md",
+      "kind": "configuration",
+      "status": "CONFIRMED",
+      "sha256": "d07ce0d8ec552a9d6a06ce2d494275cc0d082f2a39d9e6e84b26ae41692afe13",
+      "locator": "Accepted visibility and branch-protection decision with API and push-probe evidence"
     }
   ]
 }
-

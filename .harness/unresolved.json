@@ -62,13 +62,14 @@
     },
     {
       "id": "KZ-U007",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "When should the repository become public?",
-      "impact": "Does not block private development; blocks public release and README launch acceptance.",
+      "impact": "Repository visibility determines whether the GitHub Free organization can enforce main-branch protection.",
       "sources": [
-        "docs/product/PRD_v0.1.md#20-unresolved-product-decisions"
-      ]
+        "docs/product/PRD_v0.1.md#20-unresolved-product-decisions",
+        "docs/decisions/0001-public-repository-for-protected-main.md"
+      ],
+      "resolution": "Made public on 2026-07-26 after a tracked-file credential-pattern scan so GitHub Free could enforce PR-only protected main."
     }
   ]
 }
-

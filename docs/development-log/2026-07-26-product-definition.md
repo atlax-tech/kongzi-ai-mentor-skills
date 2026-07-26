@@ -11,12 +11,17 @@
 ## 验证结果
 
 - `python3 ../harness-armor/skills/harness-build/scripts/validate_harness_structure.py .`
-  已运行：`valid: true`，manifest `valid: true`，结构问题 0，本地引用
-  37 个、失效引用 0。
+  已运行并在治理决策写入后复验：`valid: true`，manifest `valid: true`，
+  结构问题 0，本地引用 41 个、失效引用 0。
 - 三个 `.harness/*.json` 已分别通过 `python3 -m json.tool` 解析。
 - 已扫描合并冲突标记与常见未完成占位词：未发现命中。
-- GitHub 仓库与分支保护验证将在完成外部设置后另行记录，当前不得视为
-  已通过。
+- 已创建 `atlax-tech/kongzi-ai-mentor-skills`，默认分支为 `dev`。
+- GitHub Free 不支持 private 仓库保护；凭证模式扫描无命中后，仓库已公开，
+  决策见 `docs/decisions/0001-public-repository-for-protected-main.md`。
+- `main` 保护 API 读回：PR 必须、管理员受限、线性历史与评论解决开启、
+  force push 和删除关闭。
+- 直推探针被 GitHub 以 `GH006` 与
+  `Changes must be made through a pull request` 拒绝；远端 `main` 未改变。
 
 ## 限制与未验证项
 
@@ -30,3 +35,4 @@
 2. 抽查学习科学文档中的 DOI 和产品边界。
 3. 运行 Harness 结构校验并记录实际输出。
 4. 检查 GitHub `main` 保护和 `dev` 默认开发分支。
+5. 尝试通过普通 push 更新 `main`，确认 GitHub 返回 protected-branch 拒绝。
