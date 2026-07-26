@@ -1,6 +1,6 @@
 # Kongzi AI Mentor Skills — PRD v0.1
 
-Status: CONFIRMED product requirements; v0.1–v0.3 command-first scope implemented on `dev`
+Status: CONFIRMED; command-first scope released as v0.1.0
 Date: 2026-07-26  
 Stage: Product definition; no business implementation is authorized in this phase
 

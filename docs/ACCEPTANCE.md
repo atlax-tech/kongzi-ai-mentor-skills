@@ -1,6 +1,6 @@
 # Acceptance
 
-Status: CONFIRMED outcomes with automated and dogfood implementation evidence
+Status: ALL v0.1 acceptance scenarios passed
 
 ## Purpose
 
@@ -20,7 +20,7 @@ agent self-report does not satisfy an implementation acceptance item.
 | AC-07 | PASS | Real daily/weekly output plus unit test proving repeated reports do not overwrite |
 | AC-08 | PASS | Unit test proves mentor enable changes no journey/source/claim/node/session/grade evidence |
 | AC-09 | PASS | Corruption test rebuilds state/profile/queue from events and preserves timestamped prior files |
-| AC-10 | PENDING RELEASE PR | Direct push was rejected; PR/admin/linear/conversation/force-push/deletion protection exists; required CI check is added during release |
+| AC-10 | PASS | PR #1 passed required `test` and merged; `main` enforces PR/admin/linear/conversation rules, strict status check, no force push/deletion |
 
 ## Cross-cutting acceptance gates
 

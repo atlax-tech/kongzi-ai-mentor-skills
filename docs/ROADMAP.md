@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: Phases 0–5 implemented; Phase 6 validation and Phase 7 release active
+Status: v0.1.0 stable command-first release complete
 
 ## Purpose
 
@@ -118,7 +118,7 @@ Exit:
 
 ## Phase 6 — Dogfood hardening and skill evolution
 
-Status: ACTIVE
+Status: CORE COMPLETE; ongoing owner dogfood and future Darwin runs continue
 
 Deliver:
 
@@ -136,7 +136,7 @@ Exit:
 
 ## Phase 7 — Stable release
 
-Status: ACTIVE
+Status: COMPLETE
 
 Deliver:
 
@@ -160,9 +160,8 @@ Exit:
 - marketplace/commercial features;
 - learning analytics sent outside the local environment.
 
-## Remaining release work
+## Post-release evidence to expand
 
-- Complete the release PR and required CI check.
 - Record full Agent-driven Cangjie/Nuwa/Darwin runs when those workflows are
   invoked for real learner content.
 - Expand runtime evidence beyond the verified Claude Code local install.

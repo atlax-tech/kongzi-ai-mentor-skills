@@ -137,3 +137,18 @@ daily report → weekly report → reminder definition → doctor
 6. 导出学习包，导入另一个空 vault，确认来源路径已重写。
 7. 打开 README Hero 和 Demo GIF。
 8. 检查 release tree 不含 `.harness/`、`AGENTS.md`、`docs/`。
+
+## 稳定发布结果
+
+- 发布 PR：<https://github.com/atlax-tech/kongzi-ai-mentor-skills/pull/1>
+- 合并 commit：`97e7d65f734281881d1c086a8de850d498bde480`
+- Release：<https://github.com/atlax-tech/kongzi-ai-mentor-skills/releases/tag/v0.1.0>
+- GitHub Actions `test`：PASS（16 秒）
+- 远端默认分支：`main`
+- `main` 必需检查：strict `test`
+- `main` 保护：PR required、enforce admins、linear history、conversation
+  resolution、force push disabled、deletion disabled
+- 公开根目录仅包含 `.github`、`.gitignore`、LICENSE、README、SKILL、
+  agents、assets、references、scripts、skills、tests。
+- 公开检查：`AGENTS.md`、`.harness/`、`docs/ARCHITECTURE.md`、
+  `docs/product/PRD_v0.1.md` 全部不存在。

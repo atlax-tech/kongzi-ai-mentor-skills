@@ -48,13 +48,13 @@
       "path": "docs/ACCEPTANCE.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "56242c0f29d8e8c1ae2f58d6b363ef178d364d59ef60e7a88f5b4094c378ff03"
+      "sha256": "70e5bee6fbf2f19a72755ba7ab6a8d0ba111440a7b3e142d238386b564ecbe13"
     },
     {
       "path": "docs/ROADMAP.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "ad58ad58629970cfc9d47b7c354ee76124a492bf91fecd1368bb3ee741e67e3d"
+      "sha256": "c171cd7772f2bdee1d033405be8297929eaaa4e26519505c0726a560bf62ef44"
     },
     {
       "path": "docs/decisions/README.md",
@@ -84,13 +84,13 @@
       "path": "docs/development-log/2026-07-26-complete-command-first-implementation.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "84372fa9e230f2f1463b8b3bf7468e21a772a836df58db7973b9a6c6c32a7490"
+      "sha256": "38f151eb5c0e83e44ed3a7154bc6cc9b8f26c78a0cebe7d99c3db36d3440be20"
     },
     {
       "path": "docs/product/PRD_v0.1.md",
       "owner": "user",
       "mode": "user",
-      "sha256": "6f70dfebb443251334bab78d2e1d03564e4cd21957c13b64068838a68d6daeaa"
+      "sha256": "3f8982ef63f7cdc54352841ad451cc89b1bb95b7caa09e352ba0c770611f495e"
     },
     {
       "path": "docs/research/LEARNING_SCIENCE.md",
@@ -102,7 +102,7 @@
       "path": ".harness/source-index.json",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "0fd4c30ee9b3ad6b1b788aa8590c86c99235e24654734cc4a5bc76c6afec0cf2"
+      "sha256": "c1b2b1a01bbba6064f7a038176152c660ea719b0b001c2a300d2b98a3ed2a362"
     },
     {
       "path": ".harness/unresolved.json",
@@ -113,5 +113,5 @@
   ],
   "source_index": ".harness/source-index.json",
   "unresolved_index": ".harness/unresolved.json",
-  "last_updated": "2026-07-26T16:20:00Z"
+  "last_updated": "2026-07-26T16:30:00Z"
 }
