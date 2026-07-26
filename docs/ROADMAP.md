@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: CONFIRMED phase order with UNRESOLVED implementation estimates
+Status: Phases 0–5 implemented; Phase 6 validation and Phase 7 release active
 
 ## Purpose
 
@@ -9,6 +9,8 @@ and defer GUI or platform work until the command-driven system creates durable
 value.
 
 ## Phase 0 — Product definition and governance
+
+Status: COMPLETE
 
 Deliver:
 
@@ -24,6 +26,8 @@ Exit:
 - no product implementation is claimed.
 
 ## Phase 1 — State foundation and router
+
+Status: COMPLETE
 
 Deliver:
 
@@ -41,6 +45,8 @@ Exit:
 
 ## Phase 2 — Evidence, map, and plan
 
+Status: COMPLETE
+
 Deliver:
 
 - progressive learner profile and baseline;
@@ -56,6 +62,8 @@ Exit:
 - one real journey reaches `planned`.
 
 ## Phase 3 — Active learning loop
+
+Status: COMPLETE
 
 Deliver:
 
@@ -73,6 +81,8 @@ Exit:
 
 ## Phase 4 — Review and reports
 
+Status: COMPLETE
+
 Deliver:
 
 - review queue and scheduling policy;
@@ -88,6 +98,9 @@ Exit:
 - daily and weekly reports trace to evidence.
 
 ## Phase 5 — Full upstream integrations
+
+Status: IMPLEMENTED; complete Agent-driven Cangjie/Nuwa/Darwin manual runs
+remain release evidence
 
 Deliver:
 
@@ -105,6 +118,8 @@ Exit:
 
 ## Phase 6 — Dogfood hardening and skill evolution
 
+Status: ACTIVE
+
 Deliver:
 
 - complete real learning journey;
@@ -120,6 +135,8 @@ Exit:
 - improvements are validation gated.
 
 ## Phase 7 — Stable release
+
+Status: ACTIVE
 
 Deliver:
 
@@ -143,16 +160,15 @@ Exit:
 - marketplace/commercial features;
 - learning analytics sent outside the local environment.
 
-## Unresolved
+## Remaining release work
 
-- Effort estimates and milestone dates.
-- First dogfood topic.
-- Runtime release matrix.
-- Reminder adapter selected for the first owner.
+- Complete the release PR and required CI check.
+- Record full Agent-driven Cangjie/Nuwa/Darwin runs when those workflows are
+  invoked for real learner content.
+- Expand runtime evidence beyond the verified Claude Code local install.
 
 ## Sources
 
 - `docs/product/PRD_v0.1.md` section 17
 - `docs/ARCHITECTURE.md`
 - `docs/ACCEPTANCE.md`
-

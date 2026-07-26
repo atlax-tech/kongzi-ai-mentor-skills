@@ -12,7 +12,7 @@
       "path": "AGENTS.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "7b02111f4db3f467663fba7c06c9df12f0b8e8eaf5a2ca142e90c7bfff411be5"
+      "sha256": "887532a7535e256ef828ca9b42b90db7d6e7501093f0957fdaa45aeaa8d226aa"
     },
     {
       "path": "docs/PRODUCT.md",
@@ -24,7 +24,7 @@
       "path": "docs/ARCHITECTURE.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "83a54edffc3343493d1aac0f0a27593283455b19a255cb9d4a3a1ccd32baa478"
+      "sha256": "aa2dc45d27f3211fca6554b52655adcbfc9ee74dd9c15830e7c626efbc0a200c"
     },
     {
       "path": "docs/DESIGN.md",
@@ -36,25 +36,25 @@
       "path": "docs/DEVELOPMENT.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "0563fac120443627129cb1fbf2041f32bde1f7174da2df2a88ea8cb41f653326"
+      "sha256": "1140cb77cbc8dbc7f6cc92a6d10a8cf814cc6ccf9e8bd513331d1ee0358223be"
     },
     {
       "path": "docs/TESTING.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "2d4618c559408fd2967da2486470582378864c19fb32fa18b720ecdcd294c58e"
+      "sha256": "defe8a989d881b7539edbca1e03c872f5507dc6e48cf58e6a0854a1cf440dbd8"
     },
     {
       "path": "docs/ACCEPTANCE.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "b69c48e739ca50eafe5ff77895411bc4a4d653a5af24d913c7f96a4dcf73b80b"
+      "sha256": "56242c0f29d8e8c1ae2f58d6b363ef178d364d59ef60e7a88f5b4094c378ff03"
     },
     {
       "path": "docs/ROADMAP.md",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "332c6782a677e7b1d124bf6326ad41af610b36a2c6e90d9f02c4918f2ecec1cd"
+      "sha256": "ad58ad58629970cfc9d47b7c354ee76124a492bf91fecd1368bb3ee741e67e3d"
     },
     {
       "path": "docs/decisions/README.md",
@@ -81,10 +81,16 @@
       "sha256": "89ba9970a2d5b6da39a3959aef76879a62d90beeac42f447e504f37555f8d83c"
     },
     {
+      "path": "docs/development-log/2026-07-26-complete-command-first-implementation.md",
+      "owner": "harness-armor",
+      "mode": "managed",
+      "sha256": "84372fa9e230f2f1463b8b3bf7468e21a772a836df58db7973b9a6c6c32a7490"
+    },
+    {
       "path": "docs/product/PRD_v0.1.md",
       "owner": "user",
       "mode": "user",
-      "sha256": "c62ba0abd329fddbf601bd3ac6c6f4143c0858aca6cd41ac38612d8bf0db6d5e"
+      "sha256": "6f70dfebb443251334bab78d2e1d03564e4cd21957c13b64068838a68d6daeaa"
     },
     {
       "path": "docs/research/LEARNING_SCIENCE.md",
@@ -96,16 +102,16 @@
       "path": ".harness/source-index.json",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "252a3a55863574144b4e69710baf1119fe07450646bf9b56f43236be41695f72"
+      "sha256": "0fd4c30ee9b3ad6b1b788aa8590c86c99235e24654734cc4a5bc76c6afec0cf2"
     },
     {
       "path": ".harness/unresolved.json",
       "owner": "harness-armor",
       "mode": "managed",
-      "sha256": "394bf4f62038555d2ed0d60cbca1a58698c779e955e0fb0b5dd1091af02f71d4"
+      "sha256": "9322ccdbd553c0dede50d2322c22d077e7e9fb7d50b23afca385a6e9627293bb"
     }
   ],
   "source_index": ".harness/source-index.json",
   "unresolved_index": ".harness/unresolved.json",
-  "last_updated": "2026-07-26T15:19:07Z"
+  "last_updated": "2026-07-26T16:20:00Z"
 }

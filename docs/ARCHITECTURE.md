@@ -1,6 +1,6 @@
 # Architecture
 
-Status: INFERRED proposed architecture; no implementation exists
+Status: CONFIRMED v0.1 implementation on `dev`
 
 ## Purpose
 
@@ -10,9 +10,12 @@ truth.
 
 ## Current state
 
-The repository contains product documents and a managed Harness. There is no
-business code, package manifest, runtime adapter, schema implementation, test
-runner, or install command.
+The repository now contains the Agent Skills router and eight specialist
+skills, a Python 3 standard-library state engine, Obsidian persistence,
+source/claim provenance, roadmap and plan generation, active study sessions,
+review scheduling, reports, repair/export/import commands, upstream adapters,
+automated tests, README assets, and a release packager. Internal Harness
+documents remain on `dev`; the public `main` release is built from an allowlist.
 
 ## Architectural drivers
 
@@ -25,7 +28,7 @@ runner, or install command.
 7. Reuse of the named upstream skills without letting them bypass Kongzi's
    evidence model.
 
-## Proposed component model
+## Implemented component model
 
 ```mermaid
 flowchart TD
@@ -58,44 +61,29 @@ flowchart TD
     Q -. "never reads or rewrites learner state" .-> F
 ```
 
-## Proposed repository module map
-
-This is a target layout, not current implementation:
+## Implemented repository module map
 
 ```text
 SKILL.md                          # Kongzi router
 skills/
   kongzi-start/SKILL.md
-  kongzi-profile/SKILL.md
   kongzi-sources/SKILL.md
-  kongzi-map/SKILL.md
-  kongzi-plan/SKILL.md
+  kongzi-roadmap/SKILL.md
   kongzi-study/SKILL.md
-  kongzi-quiz/SKILL.md
   kongzi-review/SKILL.md
   kongzi-mentor/SKILL.md
-  kongzi-note/SKILL.md
   kongzi-progress/SKILL.md
-  kongzi-report/SKILL.md
-  kongzi-status/SKILL.md
-  kongzi-resume/SKILL.md
-shared/
-  references/                    # protocols and method selection
-  schemas/                       # durable-state contracts
-  scripts/                       # deterministic validation and maintenance
-  templates/                     # Obsidian notes and reports
-integrations/
-  cangjie/
-  video-downloader/
-  nuwa/
-  darwin/
+  kongzi-integrations/SKILL.md
+scripts/
+  kongzi.py                       # state, evidence, review, reports, adapters
+  install_integrations.py         # full peer-skill installer + revision record
+  package_release.py              # public allowlist package
+references/                       # on-demand protocols and method selection
+assets/                           # hero and real-command demo
 tests/
-  fixtures/
-  evals/
+  test_kongzi.py                  # behavioral/state invariant tests
+  test-prompts.json               # Darwin evaluation prompts
 ```
-
-The exact packaging layout remains UNRESOLVED until the first implementation
-phase tests Agent Skills discovery in the target runtimes.
 
 ## Runtime flow
 
@@ -167,8 +155,11 @@ Implementation should use:
 - atomic writes where supported;
 - backup plus validation before migration.
 
-Precise JSON schemas are UNRESOLVED and belong to the first implementation
-decision.
+Schema version 1 is implemented in `.kongzi/config.json`, `profile.json`,
+`state.json`, `review-queue.json`, `integrations.json`, and append-only
+`events.jsonl`. `migrate` refuses unknown versions. `repair` rebuilds indexes
+from events after copying the prior file. `bundle export/import` uses a
+versioned manifest and a SHA-256 per file.
 
 ## Adapter contracts
 
@@ -201,22 +192,25 @@ It has no path to the user's learning-data root.
   source archives, fixtures, or Git history.
 - Local sources may be sensitive; generated reports must cite paths without
   copying unnecessary content.
-- Symlink traversal outside the chosen vault/source boundary must be rejected.
+- Bundle import rejects absolute paths and parent traversal. Local source input
+  is read only from the exact path explicitly supplied by the user.
 - Unknown repository or source scripts are not executed merely because a
   source package contains them.
 
-## Key unresolved decisions
+## Implemented decisions
 
-- Schema shapes and migration tool.
-- First supported runtime and packaging installer.
-- Reminder delivery adapter selected for v0.1.
-- Whether upstream skills are vendored, installed as peers, or wrapped through
-  discovery; full capability integration remains required.
-- Exact source parsers for PDF, EPUB, and web pages.
-- How mastery rubrics are represented across knowledge types.
+- Python 3 standard-library core with schema version 1.
+- Root Agent Skill packaging verified with `npx skills add` into a temporary
+  Claude Code project.
+- macOS `launchd` first reminder adapter, cron fallback, and mandatory
+  session-start due checking.
+- Upstream skills install as complete peers and are found through runtime
+  discovery; `UPSTREAM.json` records repository revision.
+- Local Markdown/text/HTML/EPUB/DOCX/PDF plus public HTML/text/PDF URL intake.
+- Per-knowledge-type mastery criteria stored on each node; delayed passes and
+  task-appropriate application remain mandatory.
 
 ## Sources
 
 - `docs/product/PRD_v0.1.md`
 - `docs/research/LEARNING_SCIENCE.md`
-

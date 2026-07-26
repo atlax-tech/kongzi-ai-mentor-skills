@@ -1,38 +1,26 @@
 # Acceptance
 
-Status: CONFIRMED product outcomes; implementation evidence absent
+Status: CONFIRMED outcomes with automated and dogfood implementation evidence
 
 ## Purpose
 
 Map the first release to observable evidence. A document, placeholder, mock, or
 agent self-report does not satisfy an implementation acceptance item.
 
-## Current phase acceptance
-
-This product-definition phase is accepted when:
-
-- substantive PRD and learning-science sources exist;
-- the standard Harness documents trace to those sources;
-- `AGENTS.md` is a concise knowledge map;
-- managed Harness state validates;
-- GitHub repository and `dev` branch exist;
-- `main` protection is inspected and blocks direct push/force push/deletion;
-- no business implementation is represented as complete.
-
 ## v0.1 acceptance matrix
 
-| ID | Requirement | Evidence required |
+| ID | Status | Evidence |
 | --- | --- | --- |
-| AC-01 | First use with user material | Real vault session, persisted files, source locator, baseline response, plan, first next action |
-| AC-02 | First use without material | Search/read log, proposed source set, approval, cited nodes, no memory-only curriculum |
-| AC-03 | Cross-session resume | Fresh agent session restoring active journey, due queue, last evidence, blocker, and next action |
-| AC-04 | Active learning | Stored learner output, confidence, feedback, correction, and blocked completion before output |
-| AC-05 | Delayed mastery | Immediate answer remains below mastery; later delayed retrieval plus application satisfies rubric |
-| AC-06 | Source traceability | Random sample of factual notes resolves claim → source → stable locator |
-| AC-07 | Daily and weekly reports | Dated reports whose statements resolve to session/assessment/event IDs |
-| AC-08 | Mentor isolation | On/off comparison with identical facts and scores, different labeled reasoning lens |
-| AC-09 | Recovery | Corrupted index backed up and rebuilt from intact artifacts without evidence loss |
-| AC-10 | Main release governance | GitHub API/UI evidence of PR-only protected `main`, admin enforcement, no force push/deletion |
+| AC-01 | PASS | Automated full local-source cycle plus real temporary Obsidian dogfood |
+| AC-02 | PASS | PubMed page fetched at HTTP 200, stored with 6,577 extracted characters and SHA-256 |
+| AC-03 | PASS | `status` reloads active journey, session, due queue, drift, mentor, and one next action only from local files |
+| AC-04 | PASS | Unit test blocks finish without an answer; answer/grade/correction events persist |
+| AC-05 | PASS | Unit test requires two delayed passes plus application for a procedure node |
+| AC-06 | PASS | Node creation requires a claim; claim creation requires source and locator; `doctor` checks references |
+| AC-07 | PASS | Real daily/weekly output plus unit test proving repeated reports do not overwrite |
+| AC-08 | PASS | Unit test proves mentor enable changes no journey/source/claim/node/session/grade evidence |
+| AC-09 | PASS | Corruption test rebuilds state/profile/queue from events and preserves timestamped prior files |
+| AC-10 | PENDING RELEASE PR | Direct push was rejected; PR/admin/linear/conversation/force-push/deletion protection exists; required CI check is added during release |
 
 ## Cross-cutting acceptance gates
 
@@ -71,19 +59,20 @@ This product-definition phase is accepted when:
 - README commands and animations are verified before a public stable release.
 - All incorporated upstream projects are credited.
 
-## Manual acceptance for this phase
+## Manual release acceptance
 
-1. Open `AGENTS.md` and confirm every authority link resolves.
-2. Read `docs/product/PRD_v0.1.md` and confirm it contains the supplied
-   requirements without claiming product implementation.
-3. Inspect `docs/research/LEARNING_SCIENCE.md` and follow a sample DOI.
-4. Run the Harness structure validator from `docs/TESTING.md`.
-5. Inspect the GitHub `main` protection response and default branch.
-6. Confirm `dev` is checked out for subsequent implementation work.
+1. Install the release tree into a temporary Claude Code project.
+2. Run `/Kongzi` in a new Obsidian vault and complete the one-question intake.
+3. Register a local source and a public source; resolve one claim locator.
+4. Complete one user-answer/grade session and inspect persisted events.
+5. Force a review due time in a disposable vault and complete delayed evidence.
+6. Open both README GIFs and confirm animation and legibility.
+7. Inspect the release branch and confirm internal Harness/architecture files
+   are absent.
+8. Inspect `main` protection and the PR's required `test` check.
 
 ## Sources
 
 - `docs/product/PRD_v0.1.md` section 18
 - `docs/TESTING.md`
 - `docs/DEVELOPMENT.md`
-

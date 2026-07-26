@@ -4,61 +4,67 @@
   "items": [
     {
       "id": "KZ-U001",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "What daily and weekly report times, quiet hours, and reminder caps should the first owner use?",
       "impact": "Blocks final reminder configuration but not the review-queue contract.",
       "sources": [
         "docs/product/PRD_v0.1.md#20-unresolved-product-decisions"
-      ]
+      ],
+      "resolution": "Default local check is 20:00, user-configurable. Sunday adds the weekly report. launchd/cron runs once daily and only sends an OS notification when reviews are due."
     },
     {
       "id": "KZ-U002",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "What is the first real dogfood learning topic and approved source set?",
       "impact": "Blocks end-to-end behavioral acceptance and realistic fixtures.",
       "sources": [
         "docs/product/PRD_v0.1.md#20-unresolved-product-decisions"
-      ]
+      ],
+      "resolution": "Dogfood topic is retrieval practice and learning science. A PubMed primary-paper page was fetched through Kongzi at HTTP 200 and stored with hash/provenance."
     },
     {
       "id": "KZ-U003",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "What mastery thresholds should each knowledge type use?",
       "impact": "Blocks final evidence-state transition rules.",
       "sources": [
         "docs/product/PRD_v0.1.md#20-unresolved-product-decisions",
         "docs/research/LEARNING_SCIENCE.md#13-personalization-rules-derived-from-the-evidence"
-      ]
+      ],
+      "resolution": "Each node stores a knowledge-type criterion. Defaults use 0.80–0.85, two delayed passes, and application/transfer evidence; CLI overrides allow a stricter threshold or pass count."
     },
     {
       "id": "KZ-U004",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "Which reminder-delivery adapter ships first?",
       "impact": "The review queue can be built, but out-of-session delivery acceptance remains blocked.",
       "sources": [
         "docs/product/PRD_v0.1.md#13-reminder-design",
-        "docs/ARCHITECTURE.md#key-unresolved-decisions"
-      ]
+        "docs/ARCHITECTURE.md#implemented-decisions"
+      ],
+      "resolution": "macOS launchd ships first, cron is the fallback, and every /Kongzi resume checks the durable due queue."
     },
     {
       "id": "KZ-U005",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "What versioned state schemas and implementation language should v0.1 use?",
       "impact": "Blocks implementation, migrations, and a portable test command.",
       "sources": [
         "docs/ARCHITECTURE.md#state-and-schema-strategy",
-        "docs/TESTING.md#unresolved"
-      ]
+        "docs/TESTING.md#remaining-manual-matrix"
+      ],
+      "resolution": "Python 3 standard-library core with schema_version 1, atomic JSON snapshots, append-only events, repair, migration validation, and hashed bundle export/import."
     },
     {
       "id": "KZ-U006",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "question": "Should each upstream skill be vendored, installed as a peer, or invoked through runtime discovery?",
       "impact": "Blocks packaging design; complete capability and provenance integration remain required.",
       "sources": [
-        "docs/ARCHITECTURE.md#key-unresolved-decisions",
+        "docs/ARCHITECTURE.md#implemented-decisions",
         "docs/product/PRD_v0.1.md#11-open-source-integration-contracts"
-      ]
+      ],
+      "resolution": "Install complete upstream skills as runtime peers, discover them in project/user skill roots, preserve the upstream SKILL workflow, and record repository revision in UPSTREAM.json."
     },
     {
       "id": "KZ-U007",

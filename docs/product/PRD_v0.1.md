@@ -1,6 +1,6 @@
 # Kongzi AI Mentor Skills — PRD v0.1
 
-Status: CONFIRMED product requirements with INFERRED solution proposals  
+Status: CONFIRMED product requirements; v0.1–v0.3 command-first scope implemented on `dev`
 Date: 2026-07-26  
 Stage: Product definition; no business implementation is authorized in this phase
 
@@ -907,19 +907,23 @@ deletion; changes reach `main` through a pull request after release acceptance.
 
 ## 20. Unresolved product decisions
 
-- Exact daily report time and weekly report day.
-- Reminder frequency caps and quiet hours.
-- First dogfood learning topic and source set.
-- Mastery thresholds by knowledge type.
-- Whether the first reminder adapter is Claude-specific, Codex automation, or
-  macOS `launchd`; the queue contract is common.
-- Whether generated study notes live in an existing vault folder or the default
-  `Kongzi/` folder.
-- Exact packaging/install command.
-- Repository public release timing.
+Resolved for the first owner:
 
-These decisions do not block product definition. They must be resolved before
-the affected implementation task is accepted.
+- Daily report/reminder check defaults to 20:00 local time; the user can choose
+  another `HH:MM`. Weekly auto-report is generated on Sunday.
+- A scheduled check can notify at most once per day. No notification is sent
+  when nothing is due; the review queue remains the source of truth.
+- First dogfood topic: retrieval practice and learning science, using the
+  internal evidence review plus a fetched PubMed primary-paper page.
+- Node criteria are stored per knowledge type. Default thresholds are 0.80–0.85,
+  with two delayed passes and application/transfer evidence.
+- First reminder adapter: macOS `launchd`; cron is the portable fallback.
+- Generated notes use `<vault>/Kongzi/`; an existing Obsidian vault remains the
+  default knowledge-base entry.
+- Installation: `npx skills add atlax-tech/kongzi-ai-mentor-skills`; complete
+  peer integrations use `scripts/install_integrations.py`.
+- Repository is public. `main` is the protected default stable branch; `dev`
+  retains internal Harness/product material.
 
 ## 21. Sources
 
@@ -936,4 +940,3 @@ the affected implementation task is accepted.
 - cheat-on-content:
   <https://github.com/XBuilderLAB/cheat-on-content>
 - harness-armor: <https://github.com/atlax-tech/harness-armor>
-

@@ -1,6 +1,6 @@
 # Development
 
-Status: CONFIRMED governance; implementation commands UNRESOLVED
+Status: CONFIRMED governance and portable implementation commands
 
 ## Purpose
 
@@ -9,7 +9,8 @@ turning proposed behavior into unverified product claims.
 
 ## Branch policy
 
-- `dev` is the default development and integration branch.
+- `main` is the remote default and stable-release branch.
+- `dev` is the active development and integration branch.
 - Feature work branches from `dev` and returns to `dev` through review.
 - `main` is the stable-release branch.
 - Direct push, force push, and branch deletion on `main` are prohibited.
@@ -52,29 +53,32 @@ After changing behavior:
 Run from the repository root:
 
 ```bash
-python3 ../harness-armor/skills/harness-build/scripts/scan_repository.py .
-python3 ../harness-armor/skills/harness-build/scripts/validate_harness_structure.py .
+python3 -m unittest discover -s tests -v
+python3 -m py_compile scripts/*.py
+python3 /path/to/skill-creator/scripts/quick_validate.py .
+python3 scripts/install_integrations.py --target /tmp/kongzi-skills --dry-run
+python3 scripts/kongzi.py doctor --vault /path/to/test-vault
+python3 scripts/package_release.py --source . --output /empty/release-dir
+npx skills add . --list --full-depth
 ```
 
-These paths are verified only in the owner's current sibling checkout layout.
-They are not a portable install contract.
+The sibling Harness validator remains useful when the owner supplies a
+`<harness-armor-checkout>` path:
 
-The implementation build, unit-test, lint, evaluation, install, and release
-commands are UNRESOLVED because no implementation or dependency manifest
-exists.
+```bash
+python3 <harness-armor-checkout>/skills/harness-build/scripts/validate_harness_structure.py .
+```
 
-## Proposed implementation order
+## Release workflow
 
-1. define state schemas and fixtures;
-2. implement `/Kongzi` router and resume;
-3. implement profile, source, claim, and knowledge-map records;
-4. implement one active study/assessment loop;
-5. implement review queue and reports;
-6. dogfood one complete journey;
-7. add upstream integrations one at a time with contract tests;
-8. add reminder delivery;
-9. run Darwin quality evaluation;
-10. produce release README assets and acceptance evidence.
+1. implement and verify on `dev`;
+2. update PRD/Harness mapping and Chinese development log;
+3. build a clean allowlisted release tree;
+4. confirm the tree omits `.harness/`, `AGENTS.md`, and `docs/`;
+5. create a release branch from `main`, replace its public allowlisted files,
+   and open a PR;
+6. require the `test` status check and merge through protected `main`;
+7. tag only after README installation, assets, and dogfood evidence pass.
 
 ## Dependency policy
 
@@ -100,4 +104,3 @@ Add entries under `docs/development-log/` using:
 - `docs/ARCHITECTURE.md`
 - `docs/TESTING.md`
 - `docs/ACCEPTANCE.md`
-

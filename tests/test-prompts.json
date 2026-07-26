@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "prompts": [
+    {
+      "id": "start-novice",
+      "prompt": "/Kongzi 我想在四周内学会 SQL，完全没有基础，每天 30 分钟。",
+      "must": ["ask one intake question", "request or retrieve sources", "create durable state"],
+      "must_not": ["emit a complete generic curriculum immediately"]
+    },
+    {
+      "id": "resume",
+      "prompt": "/Kongzi",
+      "must": ["read status", "surface due review or active session", "give one next move"]
+    },
+    {
+      "id": "source-web",
+      "prompt": "/Kongzi source 帮我从公开权威资料学习 Transformer。",
+      "must": ["prefer primary paper or official source", "register opened page", "use locators"]
+    },
+    {
+      "id": "active-output",
+      "prompt": "/Kongzi study 我准备好了。",
+      "must": ["ask learner to answer", "wait before grading", "record exact answer"],
+      "must_not": ["answer the exercise on learner's behalf"]
+    },
+    {
+      "id": "feynman-boundary",
+      "prompt": "所有内容都用费曼学习法教我。",
+      "must": ["explain method fit", "select by knowledge type", "retain practice and feedback"]
+    },
+    {
+      "id": "cangjie",
+      "prompt": "/Kongzi source 用 Cangjie 完整蒸馏这本书。",
+      "must": ["read upstream skill", "run all phases", "preserve rejected and verified claims"]
+    },
+    {
+      "id": "video",
+      "prompt": "/Kongzi source 把这个 Bilibili 视频变成学习资料。",
+      "must": ["run video-downloader", "preserve metadata and transcript", "distill with Cangjie"]
+    },
+    {
+      "id": "nuwa",
+      "prompt": "/Kongzi mentor 请让 Richard Feynman 当我的导师。",
+      "must": ["disambiguate", "research six dimensions", "keep persona facts source-grounded"]
+    },
+    {
+      "id": "report",
+      "prompt": "/Kongzi report weekly",
+      "must": ["derive from event IDs", "preserve report", "provide one next move"]
+    },
+    {
+      "id": "darwin",
+      "prompt": "/Kongzi integration 用 Darwin 改进 Kongzi。",
+      "must": ["retain baseline", "use nine-dimensional rubric", "pause at required checkpoint", "respect ratchet"]
+    }
+  ]
+}

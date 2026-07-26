@@ -1,6 +1,6 @@
 # Testing
 
-Status: INFERRED test strategy; Harness validation commands CONFIRMED
+Status: CONFIRMED automated core suite plus manual integration evidence
 
 ## Purpose
 
@@ -9,17 +9,18 @@ honest integration results—not merely well-formed Markdown.
 
 ## Current repository checks
 
-No business implementation exists. The only runnable checks currently validate
-the documentation Harness:
-
 ```bash
-python3 ../harness-armor/skills/harness-build/scripts/validate_harness_structure.py .
+python3 -m unittest discover -s tests -v
+python3 -m py_compile scripts/*.py
+python3 /path/to/skill-creator/scripts/quick_validate.py .
+python3 scripts/install_integrations.py --target /tmp/kongzi-skills --dry-run
+python3 scripts/package_release.py --source . --output /empty/release-dir
 ```
 
-The exact result must be recorded after every run. The sibling path is
-environment-specific and is not the future portable test command.
+GitHub Actions runs the unit suite, root metadata validation, and compilation on
+pull requests.
 
-## Future test layers
+## Test layers
 
 ### 1. Schema and state tests
 
@@ -151,16 +152,17 @@ A release PR to `main` must include:
 - integration versions/commits tested;
 - README installation and demo verification when release-facing.
 
-## Unresolved
+## Remaining manual matrix
 
-- Implementation language and test runner.
-- Portable `test`, `lint`, and evaluation commands.
-- Quantitative mastery thresholds per knowledge type.
-- Runtime matrix for v0.1.
+- Full Cangjie five-phase output produced by a target Agent runtime.
+- Full Nuwa six-dimension persona research in a target Agent runtime.
+- Darwin independent-judge baseline and checkpoint run.
+- Video full-download + Whisper and SiliconFlow paths; YouTube
+  metadata-only was exercised through Kongzi.
+- Additional runtime copies beyond the verified Claude Code project install.
 
 ## Sources
 
 - `docs/product/PRD_v0.1.md` acceptance scenarios
 - `docs/research/LEARNING_SCIENCE.md`
 - `docs/ARCHITECTURE.md`
-
